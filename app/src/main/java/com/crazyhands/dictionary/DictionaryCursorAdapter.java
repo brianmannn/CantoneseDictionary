@@ -111,8 +111,8 @@ public class DictionaryCursorAdapter extends CursorAdapter {
         editingTheWordImageView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                // Create new intent to go to {@link EditorActivity}
-                Intent intent = new Intent(context, EditorActivity.class);
+                // Create new intent to go to {@link }
+                //Intent intent = new Intent(context, );
 
                 // Form the content URI that represents the specific pet that was clicked on,
                 // by appending the "id" (passed as input to this method) onto the
@@ -122,10 +122,10 @@ public class DictionaryCursorAdapter extends CursorAdapter {
                 Uri currentWordUri = ContentUris.withAppendedId(WordEntry.CONTENT_URI, id_);
 
                 // Set the URI on the data field of the intent
-                intent.setData(currentWordUri);
+                //intent.setData(currentWordUri);
 
-                // Launch the {@link EditorActivity} to display the data for the current word.
-                context.startActivity(intent);
+                // Launch the {@link } to display the data for the current word.
+                //context.startActivity(intent);
 
 
             }

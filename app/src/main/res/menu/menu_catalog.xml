@@ -2,7 +2,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
 
-    tools:context=".CantoneseCloudList">
+    tools:context=".Fragments.BaseActivity">
 
     <item
         android:id="@+id/action_insert_dummy_data"

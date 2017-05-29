@@ -24,7 +24,7 @@ public class BaseActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.all_fragments_base);
 
-        // Setup FAB to open EditorActivity
+        // Setup FAB to open CloudEditorActivity
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab2);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override

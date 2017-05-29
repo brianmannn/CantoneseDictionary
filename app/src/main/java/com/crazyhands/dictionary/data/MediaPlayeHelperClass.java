@@ -71,10 +71,8 @@ public class MediaPlayeHelperClass  extends AppCompatActivity {
                 mediaRecorder.prepare();
                 mediaRecorder.start();
             } catch (IllegalStateException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             } catch (IOException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             }
         buttonStart.setEnabled(false);

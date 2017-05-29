@@ -15,7 +15,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.crazyhands.dictionary.CloudEditorActivity;
-import com.crazyhands.dictionary.EditorActivity;
 import com.crazyhands.dictionary.R;
 import com.crazyhands.dictionary.data.Contract;
 import com.crazyhands.dictionary.items.Cantonese_List_item;
@@ -122,7 +121,7 @@ public class CantoneseListAdapter extends ArrayAdapter<Cantonese_List_item> {
         editingTheWordImageView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                // Create new intent to go to {@link EditorActivity}
+                // Create new intent to go to {@link }
                 Intent intent = new Intent(getContext(), CloudEditorActivity.class);
 
                 // Form the content URI that represents the specific pet that was clicked on,
@@ -136,7 +135,7 @@ public class CantoneseListAdapter extends ArrayAdapter<Cantonese_List_item> {
                 intent.setData(currentWordUri);
                 intent.putExtra("wordid", wordid);
 
-                // Launch the {@link EditorActivity} to display the data for the current word.
+                // Launch the {@link } to display the data for the current word.
                 getContext().startActivity(intent);
 
 
