@@ -37,7 +37,7 @@ import static com.crazyhands.dictionary.App.Config.URL_GET_CANTONESE_WHERE;
  * Created by crazyhands on 26/05/2017.
  */
 
-public class BasicWordsFragment extends Fragment {
+public class BasicWordsFragment extends Fragment implements Response.ErrorListener {
 
     private CantoneseListAdapter mAdapter;
 
@@ -52,11 +52,9 @@ public class BasicWordsFragment extends Fragment {
         final View rootView = inflater.inflate(R.layout.fragment_all_list, container, false);
 
 
-
-
         final RequestQueue requestque = Volley.newRequestQueue(getActivity());
 
-        StringRequest request = new StringRequest(Request.Method.GET, URL_GET_CANTONESE_WHERE+"/?type=1",
+        StringRequest request = new StringRequest(Request.Method.GET, URL_GET_CANTONESE_WHERE + "/?type=1",
 
                 new Response.Listener<String>() {
                     @Override
@@ -87,39 +85,36 @@ public class BasicWordsFragment extends Fragment {
 
 
                     }
-                },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError volleyError) {
-                        //textview.setText("someshit gone down!");
-                        volleyError.printStackTrace();
-                        Log.e(TAG, "Response error" + volleyError.getMessage());
-                        Toast.makeText(getActivity(),
-                                volleyError.getMessage(), Toast.LENGTH_LONG).show();
-                        String message = null;
-                        if (volleyError instanceof NetworkError) {
-                            message = getString(R.string.ConnectionErrorMessage);
-                        } else if (volleyError instanceof ServerError) {
-                            message = "The server could not be found. Please try again after some time!!";
-                        } else if (volleyError instanceof AuthFailureError) {
-                            message = "Cannot connect to Internet...Please check your connection!";
-                        } else if (volleyError instanceof ParseError) {
-                            message = "Parsing error! Please try again after some time!!";
-                        } else if (volleyError instanceof NoConnectionError) {
-                            message = "Cannot connect to Internet...Please check your connection!";
-                        } else if (volleyError instanceof TimeoutError) {
-                            message = "Connection TimeOut! Please check your internet connection.";
-                        }
-
-                        Toast.makeText(getActivity(), message, Toast.LENGTH_SHORT).show();
-                        requestque.stop();
-                    }
-                });
+                }, this);
         requestque.add(request);
 
         return rootView;
 
     }
 
+    @Override
+    public void onErrorResponse(VolleyError volleyError) {
+        //textview.setText("someshit gone down!");
+        volleyError.printStackTrace();
+        Log.e(TAG, "Response error" + volleyError.getMessage());
+        Toast.makeText(getActivity(),
+                volleyError.getMessage(), Toast.LENGTH_LONG).show();
+        String message = null;
+        if (volleyError instanceof NetworkError) {
+            message = getString(R.string.ConnectionErrorMessage);
+        } else if (volleyError instanceof ServerError) {
+            message = "The server could not be found. Please try again after some time!!";
+        } else if (volleyError instanceof AuthFailureError) {
+            message = "Cannot connect to Internet...Please check your connection!";
+        } else if (volleyError instanceof ParseError) {
+            message = "Parsing error! Please try again after some time!!";
+        } else if (volleyError instanceof NoConnectionError) {
+            message = "Cannot connect to Internet...Please check your connection!";
+        } else if (volleyError instanceof TimeoutError) {
+            message = "Connection TimeOut! Please check your internet connection.";
+        }
 
+        Toast.makeText(getActivity(), message, Toast.LENGTH_SHORT).show();
+
+    }
 }

@@ -72,7 +72,7 @@ import static com.crazyhands.dictionary.App.Config.URL_DELEAT_CANTONESE_WHERE_ID
 import static com.crazyhands.dictionary.App.Config.URL_GET_CANTONESE_WHERE;
 import static com.crazyhands.dictionary.App.Config.URL_GET_CANTONESE_WHERE_ID;
 
-public class CloudEditorActivity extends AppCompatActivity {
+public class CloudEditorActivity extends AppCompatActivity implements Response.ErrorListener{
 
 
     /**
@@ -372,12 +372,11 @@ public class CloudEditorActivity extends AppCompatActivity {
                 TextUtils.isEmpty(soundstring)) {
             // Since no fields were modified, we can return early without creating a new word.
             // No need to create ContentValues and no need to do any ContentProvider operations.
-            Toast.makeText(CloudEditorActivity.this, "noo", Toast.LENGTH_LONG).show();
+            Toast.makeText(CloudEditorActivity.this, "noo it didn't send", Toast.LENGTH_LONG).show();
             return;
         } else {
             uploadMultipart(englishString, jyutpingString, cantoneseString, soundstring);
-            //todo add toast of success or failure
-            Toast.makeText(CloudEditorActivity.this, "yay", Toast.LENGTH_LONG).show();
+            Toast.makeText(CloudEditorActivity.this, "yay it sent", Toast.LENGTH_LONG).show();
         }
     }
 
@@ -385,7 +384,7 @@ public class CloudEditorActivity extends AppCompatActivity {
     * This is the method responsible for image upload
     * We need the full image path and the name for the image in this method
     * */
-    public void uploadMultipart(String englishString, String jyutpingString, String cantoneseString, String soundstring) {
+    public void uploadMultipart(final String englishString, final String jyutpingString, final String cantoneseString, final String soundstring) {
         //getting name for the image
         //getting the actual path of the image
         String path;
@@ -419,7 +418,50 @@ public class CloudEditorActivity extends AppCompatActivity {
                 Toast.makeText(this, exc.getMessage(), Toast.LENGTH_SHORT).show();
             }}
         else {
-            //todo add volley call for editing without uploading file
+            final RequestQueue requestque = Volley.newRequestQueue(CloudEditorActivity.this);
+
+            StringRequest request = new StringRequest(Request.Method.POST, Config.URL_ADD_WORD,
+
+                    new Response.Listener<String>() {
+                        @Override
+                        public void onResponse(String response) {
+                            Log.d(TAG, "Events Response: " + response.toString());
+
+                            // Extract relevant fields from the JSON response
+
+                            // If the JSON string is empty or null, then return early.
+                            if (TextUtils.isEmpty(response)) {
+                                return;
+                            }
+                            // Try to parse the JSON response string. If there's a problem with the way the JSON
+                            // is formatted, a JSONException exception object will be thrown.
+                            // Catch the exception so the app doesn't crash, and print the error message to the logs.
+
+                            requestque.stop();
+
+
+                        }
+                    },this) {
+
+                @Override
+                protected Map<String, String> getParams() {
+                    // Posting params to register url
+                    Map<String, String> params = new HashMap<String, String>();
+                    params.put("id", Integer.toString(wordid));
+                    params.put("name", soundstring); //Adding text parameter to the request
+                    params.put("type", String.valueOf(mType));
+                    params.put("english", englishString);
+                    params.put("jyutping", jyutpingString);
+                    params.put("cantonese", cantoneseString);
+                    params.put("soundAddress", soundstring);
+
+                    return params;
+
+                }
+
+            };
+            requestque.add(request);
+
         }
     }
 
@@ -489,7 +531,7 @@ public class CloudEditorActivity extends AppCompatActivity {
         mJyutpingEditText.setText("things juytping");
         mCantoneseEditText.setText("things cantonese");
         //mSoundtextview.setText("things sound location");
-
+//todo change the spinner
 
         final RequestQueue requestque = Volley.newRequestQueue(CloudEditorActivity.this);
 
@@ -560,34 +602,7 @@ public class CloudEditorActivity extends AppCompatActivity {
 
 
                     }
-                },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError volleyError) {
-                        //textview.setText("someshit gone down!");
-                        volleyError.printStackTrace();
-                        Log.e(TAG, "Response error" + volleyError.getMessage());
-                        Toast.makeText(CloudEditorActivity.this,
-                                volleyError.getMessage(), Toast.LENGTH_LONG).show();
-                        String message = null;
-                        if (volleyError instanceof NetworkError) {
-                            message = getString(R.string.ConnectionErrorMessage);
-                        } else if (volleyError instanceof ServerError) {
-                            message = "The server could not be found. Please try again after some time!!";
-                        } else if (volleyError instanceof AuthFailureError) {
-                            message = "Cannot connect to Internet...Please check your connection!";
-                        } else if (volleyError instanceof ParseError) {
-                            message = "Parsing error! Please try again after some time!!";
-                        } else if (volleyError instanceof NoConnectionError) {
-                            message = "Cannot connect to Internet...Please check your connection!";
-                        } else if (volleyError instanceof TimeoutError) {
-                            message = "Connection TimeOut! Please check your internet connection.";
-                        }
-
-                        Toast.makeText(CloudEditorActivity.this, message, Toast.LENGTH_SHORT).show();
-                        requestque.stop();
-                    }
-                });
+                },this);
         requestque.add(request);
 
 
@@ -616,34 +631,7 @@ public class CloudEditorActivity extends AppCompatActivity {
 
 
                     }
-                },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError volleyError) {
-                        //textview.setText("someshit gone down!");
-                        volleyError.printStackTrace();
-                        Log.e(TAG, "Response error" + volleyError.getMessage());
-                        Toast.makeText(CloudEditorActivity.this,
-                                volleyError.getMessage(), Toast.LENGTH_LONG).show();
-                        String message = null;
-                        if (volleyError instanceof NetworkError) {
-                            message = getString(R.string.ConnectionErrorMessage);
-                        } else if (volleyError instanceof ServerError) {
-                            message = "The server could not be found. Please try again after some time!!";
-                        } else if (volleyError instanceof AuthFailureError) {
-                            message = "Cannot connect to Internet...Please check your connection!";
-                        } else if (volleyError instanceof ParseError) {
-                            message = "Parsing error! Please try again after some time!!";
-                        } else if (volleyError instanceof NoConnectionError) {
-                            message = "Cannot connect to Internet...Please check your connection!";
-                        } else if (volleyError instanceof TimeoutError) {
-                            message = "Connection TimeOut! Please check your internet connection.";
-                        }
-
-                        Toast.makeText(CloudEditorActivity.this, message, Toast.LENGTH_SHORT).show();
-                        requestque.stop();
-                    }
-                }) {
+                },this) {
             @Override
             protected Map<String, String> getParams() {
                 // Posting params to register url
@@ -658,6 +646,31 @@ public class CloudEditorActivity extends AppCompatActivity {
 
         };
         requestque.add(request);
+
+    }
+    @Override
+    public void onErrorResponse(VolleyError volleyError) {
+        //textview.setText("someshit gone down!");
+        volleyError.printStackTrace();
+        Log.e(TAG, "Response error" + volleyError.getMessage());
+        Toast.makeText(CloudEditorActivity.this,
+                volleyError.getMessage(), Toast.LENGTH_LONG).show();
+        String message = null;
+        if (volleyError instanceof NetworkError) {
+            message = getString(R.string.ConnectionErrorMessage);
+        } else if (volleyError instanceof ServerError) {
+            message = "The server could not be found. Please try again after some time!!";
+        } else if (volleyError instanceof AuthFailureError) {
+            message = "Cannot connect to Internet...Please check your connection!";
+        } else if (volleyError instanceof ParseError) {
+            message = "Parsing error! Please try again after some time!!";
+        } else if (volleyError instanceof NoConnectionError) {
+            message = "Cannot connect to Internet...Please check your connection!";
+        } else if (volleyError instanceof TimeoutError) {
+            message = "Connection TimeOut! Please check your internet connection.";
+        }
+
+        Toast.makeText(CloudEditorActivity.this, message, Toast.LENGTH_SHORT).show();
 
     }
 }
