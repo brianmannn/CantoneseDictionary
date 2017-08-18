@@ -1,14 +1,10 @@
 package com.crazyhands.dictionary.Fragments;
 
-
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListView;
@@ -27,43 +23,43 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.crazyhands.dictionary.Adapters.CantoneseListAdapter;
-import com.crazyhands.dictionary.CloudEditorActivity;
 import com.crazyhands.dictionary.R;
 import com.crazyhands.dictionary.data.QueryUtils;
 import com.crazyhands.dictionary.items.Cantonese_List_item;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static com.android.volley.VolleyLog.TAG;
-import static com.crazyhands.dictionary.App.Config.URL_GET_CANTONESE;
 
-/**
- * A simple {@link Fragment} subclass.
- *
- */
 
-public class AllListFragment extends Fragment {
+public class SearchFragment extends Fragment {
+
+    String URL_SEARCH_FOR_WORD = "http://s681173862.websitehome.co.uk/ian/Dictionary/searchEnglish.php" + "/?searchWord=";
 
     private CantoneseListAdapter mAdapter;
 
-    public AllListFragment() {
+    public SearchFragment() {
         // Required empty public constructor
     }
-
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+
+        // get the word to be searched for
+        String searchword = getArguments().getString("search");
+
         // Inflate the layout for this fragment
         final View rootView = inflater.inflate(R.layout.fragment_all_list, container, false);
 
-
-
+        final String searchString = "love";
 
         final RequestQueue requestque = Volley.newRequestQueue(getActivity());
 
-        StringRequest request = new StringRequest(Request.Method.GET, URL_GET_CANTONESE,
+        final StringRequest request = new StringRequest(Request.Method.GET, URL_SEARCH_FOR_WORD + searchword,
 
                 new Response.Listener<String>() {
                     @Override
@@ -71,7 +67,7 @@ public class AllListFragment extends Fragment {
                         Log.d(TAG, "Events Response: " + response.toString());
 
                         // Extract relevant fields from the JSON response and create a list of  List_items
-                        final List<Cantonese_List_item> eventss = QueryUtils.extractDataFromJson(response);
+                        final List<Cantonese_List_item> words = QueryUtils.extractDataFromJson(response);
 
                         // Find the ListView which will be populated with the word data
                         ListView wordListView = (ListView) rootView.findViewById(R.id.list);
@@ -84,8 +80,8 @@ public class AllListFragment extends Fragment {
                         wordListView.setAdapter(mAdapter);
 
 
-                        if (eventss != null && !eventss.isEmpty()) {
-                            mAdapter.addAll(eventss);
+                        if (words != null && !words.isEmpty()) {
+                            mAdapter.addAll(words);
                             // View loadingIndicator = findViewById(R.id.loading_indicator);
                             // loadingIndicator.setVisibility(View.GONE);
                         }
@@ -98,7 +94,6 @@ public class AllListFragment extends Fragment {
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError volleyError) {
-                        //textview.setText("someshit gone down!");
                         volleyError.printStackTrace();
                         Log.e(TAG, "Response error" + volleyError.getMessage());
                         Toast.makeText(getActivity(),
@@ -121,12 +116,21 @@ public class AllListFragment extends Fragment {
                         Toast.makeText(getActivity(), message, Toast.LENGTH_SHORT).show();
                         requestque.stop();
                     }
-                });
+                }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+                // Posting params to register url
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("searchstring", searchString);
+
+                return params;
+
+            }
+        };
         requestque.add(request);
 
         return rootView;
 
     }
-
-
 }

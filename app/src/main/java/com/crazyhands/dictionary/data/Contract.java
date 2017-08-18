@@ -95,15 +95,23 @@ public  final class Contract {
         /**
          * the sound of the word in Cantonese
          *
-         * Type: int
+         * Type: TEXT
          */
 
         public static final String COLUMN_DICTIONARY_SOUND_ID = "Sound_id";
 
+        /**
+         * the sound of the word in Cantonese
+         *
+         * Type: int
+         */
+
+        public static final String COLUMN_DICTIONARY_TYPE = "type";
+
 
 
         /**
-         * Possible values for the gender of the pet.
+         * Possible values for the type of the word.
          */
         public static final int TYPE_ALL = 0;
         public static final int TYPE_BASIC = 1;

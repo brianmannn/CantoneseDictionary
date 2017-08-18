@@ -13,11 +13,6 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity android:name=".Fragments.BaseActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
         </activity>
 
         <provider
@@ -25,7 +20,19 @@
             android:authorities="com.crazyhands.dictionary"
             android:exported="false" />
 
-        <activity android:name=".CloudEditorActivity"></activity>
+        <activity android:name=".CloudEditorActivity" />
+        <activity
+            android:name=".BaseActivityWithNav"
+
+            android:label="@string/title_activity_base_with_nav"
+            android:theme="@style/AppTheme.NoActionBar">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

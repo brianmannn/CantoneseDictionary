@@ -11,6 +11,7 @@ import android.view.MenuItem;
 import android.view.View;
 
 import com.crazyhands.dictionary.Adapters.FragmentAdapter;
+import com.crazyhands.dictionary.BaseActivityWithNav;
 import com.crazyhands.dictionary.CloudEditorActivity;
 import com.crazyhands.dictionary.R;
 
@@ -66,11 +67,8 @@ public class BaseActivity extends AppCompatActivity {
         switch (item.getItemId()) {
             // Respond to a click on the "Insert dummy data" menu option
             case R.id.action_insert_dummy_data:
-
-                return true;
-            // Respond to a click on the "Delete all entries" menu option
-            case R.id.action_delete_all_entries:
-
+                Intent intent = new Intent(BaseActivity.this, BaseActivityWithNav.class);
+                startActivity(intent);
                 return true;
         }
         return super.onOptionsItemSelected(item);

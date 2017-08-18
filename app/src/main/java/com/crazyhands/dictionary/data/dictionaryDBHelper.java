@@ -19,14 +19,15 @@ public class dictionaryDBHelper extends SQLiteOpenHelper {
 
     public void onCreate(SQLiteDatabase db) {
 
-// Create a String that contains the SQL statement to create the pets table
+// Create a String that contains the SQL statement to create the dictionary table table
 
         String SQL_CREATE_DICTIONARY_TABLE = "CREATE TABLE " + WordEntry.TABLE_NAME + " ("
                 + WordEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
                 + WordEntry.COLUMN_DICTIONARY_ENGLISH + " TEXT NOT NULL, "
                 + WordEntry.COLUMN_DICTIONARY_JYUTPING + " TEXT NOT NULL, "
                 + WordEntry.COLUMN_DICTIONARY_CANTONESE + " TEXT NOT NULL, "
-                + WordEntry.COLUMN_DICTIONARY_SOUND_ID + " TEXT NOT NULL);";
+                + WordEntry.COLUMN_DICTIONARY_SOUND_ID + " TEXT NOT NULL, "
+                + WordEntry.COLUMN_DICTIONARY_TYPE + " TEXT NOT NULL);";
 
         db.execSQL(SQL_CREATE_DICTIONARY_TABLE);
 

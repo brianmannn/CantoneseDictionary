@@ -18,5 +18,7 @@
         <item>@string/type_phrase</item>
         <item>@string/type_number</item>
 
+
     </string-array>
+    <string name="search">search</string>
 </resources>

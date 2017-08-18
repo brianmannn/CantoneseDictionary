@@ -26,7 +26,6 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.crazyhands.dictionary.Adapters.CantoneseListAdapter;
-import com.crazyhands.dictionary.Adapters.PhrasesAdapter;
 import com.crazyhands.dictionary.Adapters.WordCursorAdapter;
 import com.crazyhands.dictionary.R;
 import com.crazyhands.dictionary.data.Contract;
@@ -39,27 +38,30 @@ import java.util.List;
 import static com.android.volley.VolleyLog.TAG;
 import static com.crazyhands.dictionary.App.Config.URL_GET_CANTONESE_WHERE;
 
-
-public class PhrasesFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor> {
-
-
-private WordCursorAdapter mAdapter;
-
-
 /**
- * Identifier for the pet data loader
+ * Created by crazyhands on 30/05/2017.
  */
-private static final int WORD_LOADER=1;
 
-public PhrasesFragment(){
+public class otherWordsFregment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor> {
+
+
+    private WordCursorAdapter mAdapter;
+
+
+    /**
+     * Identifier for the pet data loader
+     */
+    private static final int WORD_LOADER=1;
+
+    public otherWordsFregment(){
         // Required empty public constructor
-        }
+    }
 
-@Override
-public View onCreateView(LayoutInflater inflater,ViewGroup container,
-        Bundle savedInstanceState){
+    @Override
+    public View onCreateView(LayoutInflater inflater,ViewGroup container,
+                             Bundle savedInstanceState){
 // Inflate the layout for this fragment
-final View rootView=inflater.inflate(R.layout.sqlite_fragment,container,false);
+        final View rootView=inflater.inflate(R.layout.sqlite_fragment,container,false);
 
 
         // Find the ListView which will be populated with the pet data
@@ -78,41 +80,41 @@ final View rootView=inflater.inflate(R.layout.sqlite_fragment,container,false);
         getLoaderManager().initLoader(WORD_LOADER,null,this);
 
         return rootView;
-        }
+    }
 
-@Override
-public Loader<Cursor> onCreateLoader(int i, Bundle bundle){
+    @Override
+    public Loader<Cursor> onCreateLoader(int i, Bundle bundle){
         // Define a projection that specifies the columns from the table we care about.
         String[]projection={
-        Contract.WordEntry._ID,
-        Contract.WordEntry.COLUMN_DICTIONARY_ENGLISH,
-        Contract.WordEntry.COLUMN_DICTIONARY_JYUTPING,
-        Contract.WordEntry.COLUMN_DICTIONARY_CANTONESE,
-        Contract.WordEntry.COLUMN_DICTIONARY_SOUND_ID,
-        Contract.WordEntry.COLUMN_DICTIONARY_TYPE};
+                Contract.WordEntry._ID,
+                Contract.WordEntry.COLUMN_DICTIONARY_ENGLISH,
+                Contract.WordEntry.COLUMN_DICTIONARY_JYUTPING,
+                Contract.WordEntry.COLUMN_DICTIONARY_CANTONESE,
+                Contract.WordEntry.COLUMN_DICTIONARY_SOUND_ID,
+                Contract.WordEntry.COLUMN_DICTIONARY_TYPE};
 
         String selection=Contract.WordEntry.COLUMN_DICTIONARY_TYPE+"=?";
-        String[]selectionArgs={String.valueOf(Contract.WordEntry.TYPE_PHRASE)};
+        String[]selectionArgs={String.valueOf(0)};//todo add this to contract
 
 
         // This loader will execute the ContentProvider's query method on a background thread
         return new CursorLoader(getContext(),   // Parent activity context
-        Contract.WordEntry.CONTENT_URI,     // Provider content URI to query
-        projection,                         // Columns to include in the resulting Cursor
-        selection,                          // No selection clause
-        selectionArgs,                      // No selection arguments
-        null);                              // Default sort order
-        }
+                Contract.WordEntry.CONTENT_URI,     // Provider content URI to query
+                projection,                         // Columns to include in the resulting Cursor
+                selection,                          // No selection clause
+                selectionArgs,                      // No selection arguments
+                null);                              // Default sort order
+    }
 
-@Override
-public void onLoadFinished(Loader<Cursor> loader,Cursor data){
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader,Cursor data){
         // Update {@link PetCursorAdapter} with this new cursor containing updated pet data
         mAdapter.swapCursor(data);
-        }
+    }
 
-@Override
-public void onLoaderReset(Loader<Cursor> loader){
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader){
         // Callback called when the data needs to be deleted
         mAdapter.swapCursor(null);
-        }
-        }
+    }
+}

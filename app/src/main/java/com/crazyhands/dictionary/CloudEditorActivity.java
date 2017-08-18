@@ -141,6 +141,7 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
         Intent intent = getIntent();
         mCurrentWordUri = intent.getData();
         wordid = intent.getIntExtra("wordid", -1);
+        Log.v("wordid is", Integer.toString(wordid));
 
 
         mEnglishEditText = (EditText) findViewById(R.id.cloud_edit_English);
@@ -356,7 +357,6 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
         return super.onOptionsItemSelected(item);
     }
 
-
     private void saveWord() {
         // Read from input fields
         // Use trim to eliminate leading or trailing white space
@@ -487,7 +487,7 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
         switch (requestCode) {
             case RequestPermissionCode:
                 if (grantResults.length > 0) {
-                    boolean RecordPermission = grantResults[1] ==
+                    boolean RecordPermission = grantResults[0] ==
                             PackageManager.PERMISSION_GRANTED;
 
                     if (RecordPermission) {
