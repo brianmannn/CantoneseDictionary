@@ -37,6 +37,8 @@ import static com.android.volley.VolleyLog.TAG;
 
 public class SearchFragment extends Fragment {
 
+
+
     String URL_SEARCH_FOR_WORD = "http://s681173862.websitehome.co.uk/ian/Dictionary/searchEnglish.php" + "/?searchWord=";
 
     private CantoneseListAdapter mAdapter;
@@ -78,7 +80,6 @@ public class SearchFragment extends Fragment {
                         // Set the adapter on the {@link ListView}
                         // so the list can be populated in the user interface
                         wordListView.setAdapter(mAdapter);
-
 
                         if (words != null && !words.isEmpty()) {
                             mAdapter.addAll(words);

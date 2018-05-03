@@ -143,7 +143,7 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
             loadHomeFragment();
         }
 
-
+//when the search button is clicked
         searchButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -236,7 +236,7 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
                 return settingsFragment;
 
             case 2:
-                // movies fragment
+                // numbers fragment
                 NumbersFragment numberFragment = new NumbersFragment();
                 return numberFragment;
             case 3:
@@ -263,8 +263,9 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
     }
 
     private void selectNavMenu() {
+        if (navItemIndex!=5){
         navigationView.getMenu().getItem(navItemIndex).setChecked(true);
-    }
+    }}
 
     private void setUpNavigationView() {
         //Setting Navigation View Item Selected Listener to handle the item click of the navigation menu
@@ -297,7 +298,10 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
                         navItemIndex = 4;
                         CURRENT_TAG = TAG_SETTINGS;
                         break;
-
+                    case R.id.search_button:
+                        navItemIndex = 5;
+                        CURRENT_TAG = TAG_SEARCH;
+                        break;
                     default:
                         navItemIndex = 0;
                 }
@@ -367,7 +371,7 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
         // Inflate the menu; this adds items to the action bar if it is present.
 
         // show menu only when home fragment is selected
-        if (navItemIndex == 0 || navItemIndex == 1 || navItemIndex == 2 || navItemIndex == 3 || navItemIndex == 4) {
+        if (navItemIndex == 0 || navItemIndex == 1 || navItemIndex == 2 || navItemIndex == 3 || navItemIndex == 4 || navItemIndex==5) {
             getMenuInflater().inflate(R.menu.main, menu);
         }
 
@@ -382,7 +386,7 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
         int id = item.getItemId();
 
 
-
+//todo auto add words the first time
         //if refresh button is pressed
         if (id == R.id.refresh) {
             syncSQLiteMySQLDB();
