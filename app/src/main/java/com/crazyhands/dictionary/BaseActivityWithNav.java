@@ -3,6 +3,7 @@ package com.crazyhands.dictionary;
 import android.app.ProgressDialog;
 import android.content.ContentValues;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -61,6 +62,8 @@ import static com.crazyhands.dictionary.R.id.search_edit_text;
 
 public class BaseActivityWithNav extends AppCompatActivity implements Response.ErrorListener{
 
+    SharedPreferences prefs = null;
+
     private NavigationView navigationView;
     private DrawerLayout drawer;
     private View navHeader;
@@ -97,7 +100,7 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
 
     // Progress Dialog Object
     ProgressDialog prgDialog;
-
+//https://stackoverflow.com/questions/7217578/check-if-application-is-on-its-first-run
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -162,6 +165,24 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
         prgDialog = new ProgressDialog(this);
         prgDialog.setMessage("Transferring Data from Remote MySQL DB and Syncing SQLite. Please wait...");
         prgDialog.setCancelable(false);
+
+        //get shared preferences including initial install flag
+        prefs = getSharedPreferences("com.crazyhands.dictionary", MODE_PRIVATE);
+
+    }
+
+//when the app app is restarted
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (prefs.getBoolean("firstrun", true)) {
+            // Do first run stuff here then set 'firstrun' as false
+            // using the following line to edit/commit prefs
+            //todo run add words
+            syncSQLiteMySQLDB();
+            prefs.edit().putBoolean("firstrun", false).commit();
+        }
     }
 
     /***
@@ -414,7 +435,7 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
 
         // Show ProgressBar
         prgDialog.show();
-
+//request all the words from the server
         final RequestQueue requestque = Volley.newRequestQueue(BaseActivityWithNav.this);
 //todo remove hard code
         StringRequest request = new StringRequest(Request.Method.POST, "http://s681173862.websitehome.co.uk/ian/Dictionary/getCantonese.php",
@@ -506,6 +527,8 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
 
                     // Add type extracted from Object
                     values.put(WordEntry.COLUMN_DICTIONARY_TYPE, obj.get("type").toString());
+
+                    //todo clear SQLite databese before updateing it
 
                     // Insert word into SQLite DB
                     Uri newUri = getContentResolver().insert(WordEntry.CONTENT_URI, values);

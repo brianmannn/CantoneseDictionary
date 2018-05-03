@@ -22,7 +22,7 @@
         <activity
             android:name=".BaseActivityWithNav"
 
-            android:label="@string/title_activity_base_with_nav"
+            android:label="@string/app.title"
             android:theme="@style/AppTheme.NoActionBar">
 
             <intent-filter>

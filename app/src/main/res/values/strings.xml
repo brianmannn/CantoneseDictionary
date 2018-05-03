@@ -1,50 +1,60 @@
 <resources>
     <string name="app_name">Dictionary</string>
+
+
+    <!-- labels for the items -->
     <string name="English">English</string>
     <string name="Cantonese">Cantonese</string>
     <string name="Jyutping">Jyutping</string>
+
+    <!-- actions -->
     <string name="action_save">Save</string>
     <string name="action_delete">Delete</string>
-    <string name="action_insert_dummy_data">To the new version!</string>
+
+    <!-- titles for editing or adding a word-->
     <string name="editor_activity_title_new_word">Add a new word</string>
     <string name="editor_activity_title_edit_word">Edit word</string>
+
     <string name="ConnectionErrorMessage">Connection error</string>
 
-    <string name="type_number">number</string>
+    <!-- type title-->
+    <string name="type_number">Number</string>
 
     <!-- Toolbar titles when navigation menu item is selected -->
     <string-array name="nav_item_activity_titles">
-        <item>basic</item>
+        <item>Basic</item>
         <item>Phrases</item>
         <item>Numbers</item>
-        <item>other words</item>
+        <item>Other words</item>
         <item>All words</item>
         <item>Search</item>
-
     </string-array>
 
+    <!-- type options-->
+    <string name="category_type">Type</string>
+    <string name="type_phrase">Phrase</string>
+    <string name="type_all">Other</string>
+    <string name="type_basic">Basic Character</string>
+    <!-- title -->
+    <string name="app.title">The Cantonese Dictionary</string>
 
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="category_type">type</string>
-    <string name="type_phrase">phrase</string>
-    <string name="type_all">other</string>
-    <string name="type_basic">basic character</string>
-    <string name="title_activity_base_with_nav">The Cantonese Dictionary</string>
+    <string name="basic_words">Basic characters</string>
+    <string name="nav_phrases">Phrases</string>
+    <string name="other_charicters">Other Characters</string>
+    <string name="nav_all_words">All Characters</string>
+    <string name="numbers_nav_string">Numbers</string>
 
-    <string name="basic_wprds">basic characters</string>
-    <string name="nav_phrasess">phrases</string>
-    <string name="other_charicters">other characters</string>
-    <string name="action_logout">logout</string>
     <string name="openDrawer">open draw string</string>
     <string name="closeDrawer">close draw string</string>
-    <string name="numbers_nav_string">Numbers</string>
-    <string name="nav_all_words">all characters</string>
+
     <string name="search_button">Search</string>
     <string name="search_hint">English or Cantonese here</string>
-    <string name="empty_view_title_text">load the dictionary!</string>
-    <string name="refresh">refresh</string>
-    <string name="the_chinese_dictionary">The chinese Dictionary</string>
-    <string name="setEnglish">english</string>
-    <string name="setJuytping">juytping</string>
-    <string name="SetCantonese">cantonese</string>
+
+    <string name="empty_view_title_text">Load the dictionary!</string>
+
+    <string name="refresh">Refresh</string>
+
+    <string name="setEnglish">English</string>
+    <string name="setJuytping">Juytping</string>
+    <string name="SetCantonese">Cantonese</string>
 </resources>
