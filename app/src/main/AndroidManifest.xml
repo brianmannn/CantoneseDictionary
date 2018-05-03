@@ -12,8 +12,6 @@
         android:roundIcon="@drawable/cantonese_dictionary"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".Fragments.BaseActivity">
-        </activity>
 
         <provider
             android:name=".data.DictionaryProvider"

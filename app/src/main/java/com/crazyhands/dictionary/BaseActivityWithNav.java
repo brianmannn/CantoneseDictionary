@@ -114,9 +114,6 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
         // Navigation view header
         navHeader = navigationView.getHeaderView(0);
         txtName = (TextView) navHeader.findViewById(R.id.name);
-        txtWebsite = (TextView) navHeader.findViewById(R.id.website);
-        //imgNavHeaderBg = (ImageView) navHeader.findViewById(R.id.img_header_bg);
-        imgProfile = (ImageView) navHeader.findViewById(R.id.img_profile);
 
         // load toolbar titles from string resources
         activityTitles = getResources().getStringArray(R.array.nav_item_activity_titles);
@@ -203,7 +200,7 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
             public void run() {
                 // update the main content by replacing fragments
                 Fragment fragment = getHomeFragment();
-                if(bundle != null){fragment.setArguments(bundle);};
+                if(bundle != null){fragment.setArguments(bundle);}
                 FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
                 fragmentTransaction.setCustomAnimations(android.R.anim.fade_in,
                         android.R.anim.fade_out);
@@ -384,11 +381,7 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_logout) {
-            Toast.makeText(getApplicationContext(), "Logout user!", Toast.LENGTH_LONG).show();
-            return true;
-        }
+
 
         //if refresh button is pressed
         if (id == R.id.refresh) {
@@ -419,7 +412,7 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
         prgDialog.show();
 
         final RequestQueue requestque = Volley.newRequestQueue(BaseActivityWithNav.this);
-
+//todo remove hard code
         StringRequest request = new StringRequest(Request.Method.POST, "http://s681173862.websitehome.co.uk/ian/Dictionary/getCantonese.php",
                 new Response.Listener<String>() {
                     @Override
@@ -461,7 +454,7 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
 
     public void updateSQLite(String response){
         ArrayList<HashMap<String, String>> usersynclist;
-        usersynclist = new ArrayList<HashMap<String, String>>();
+        usersynclist = new ArrayList<>();
         // Create GSON object
         Gson gson = new GsonBuilder().create();
         try {
@@ -516,7 +509,7 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
 
 
                     //hashmap for sync status of all the words just added
-                    HashMap<String, String> map = new HashMap<String, String>();
+                    HashMap<String, String> map = new HashMap<>();
                     // Add status for each User in Hashmap
                     map.put("id", obj.get("id").toString());
                     map.put("status", "1");

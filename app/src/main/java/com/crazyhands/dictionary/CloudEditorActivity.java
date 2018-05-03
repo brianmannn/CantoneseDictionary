@@ -40,7 +40,6 @@ import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.crazyhands.dictionary.Adapters.CantoneseListAdapter;
 import com.crazyhands.dictionary.App.Config;
-import com.crazyhands.dictionary.Fragments.BaseActivity;
 import com.crazyhands.dictionary.data.Contract.WordEntry;
 import com.crazyhands.dictionary.data.MediaPlayeHelperClass;
 import com.crazyhands.dictionary.data.QueryUtils;
@@ -339,18 +338,18 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
                 saveWord();
                 // Exit activity
                 //finish();
-                Intent intent = new Intent(CloudEditorActivity.this, BaseActivity.class);
+                Intent intent = new Intent(CloudEditorActivity.this, BaseActivityWithNav.class);
                 startActivity(intent);
                 return true;
             // Respond to a click on the "Delete" menu option
             case R.id.action_delete:
                 deleateWord();
-                Intent iintent = new Intent(CloudEditorActivity.this, BaseActivity.class);
+                Intent iintent = new Intent(CloudEditorActivity.this, BaseActivityWithNav.class);
                 startActivity(iintent);
                 return true;
             // Respond to a click on the "Up" arrow button in the app bar
             case android.R.id.home:
-                // Navigate back to parent activity (BaseActivity)
+                // Navigate back to parent activity (BaseActivityWithNav)
                 NavUtils.navigateUpFromSameTask(this);
                 return true;
         }
@@ -527,9 +526,9 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
     }
 
     private void addValuesToFields(int wordid) {
-        mEnglishEditText.setText("things english");
-        mJyutpingEditText.setText("things juytping");
-        mCantoneseEditText.setText("things cantonese");
+        mEnglishEditText.setText(R.string.setEnglish);
+        mJyutpingEditText.setText(R.string.setJuytping);
+        mCantoneseEditText.setText(R.string.SetCantonese);
         //mSoundtextview.setText("things sound location");
 //todo change the spinner
 

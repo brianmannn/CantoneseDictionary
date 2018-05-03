@@ -42,4 +42,9 @@
     <string name="search_button">Search</string>
     <string name="search_hint">English or Cantonese here</string>
     <string name="empty_view_title_text">load the dictionary!</string>
+    <string name="refresh">refresh</string>
+    <string name="the_chinese_dictionary">The chinese Dictionary</string>
+    <string name="setEnglish">english</string>
+    <string name="setJuytping">juytping</string>
+    <string name="SetCantonese">cantonese</string>
 </resources>

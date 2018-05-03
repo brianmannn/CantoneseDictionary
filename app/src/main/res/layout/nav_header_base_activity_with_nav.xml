@@ -21,10 +21,10 @@
         android:id="@+id/name"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="The chinese Dictionary"
-        android:padding="40px"
+        android:text="@string/the_chinese_dictionary"
+        android:padding="20dp"
         android:textAppearance="@style/TextAppearance.AppCompat.Title"
-        android:textSize="80px"
+        android:textSize="35sp"
         />
 
 
@@ -33,6 +33,7 @@
         android:id="@+id/search_edit_text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:inputType="text"
         android:hint="@string/search_hint"
         android:textColorHint="@color/colorPrimaryDark"
         android:layout_below="@+id/img_header_bg"
