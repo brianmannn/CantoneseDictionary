@@ -1,18 +1,11 @@
 <resources>
     <string name="app_name">Dictionary</string>
     <string name="English">English</string>
-    <string name="ypinion">Yipinion</string>
     <string name="Cantonese">Cantonese</string>
     <string name="Jyutping">Jyutping</string>
     <string name="action_save">Save</string>
     <string name="action_delete">Delete</string>
-    <string name="action_delete_all_entries">Delete all</string>
     <string name="action_insert_dummy_data">To the new version!</string>
-    <string name="editor_insert_word_failed">Failed to input word</string>
-    <string name="editor_insert_word_successful">Word added successfully!</string>
-    <string name="editor_update_word_failed">word update failed</string>
-    <string name="editor_update_word_successful">Successfully updated the word</string>
-    <string name="editor_activity_title_new_pet">Add a word</string>
     <string name="editor_activity_title_new_word">Add a new word</string>
     <string name="editor_activity_title_edit_word">Edit word</string>
     <string name="ConnectionErrorMessage">Connection error</string>
@@ -32,33 +25,21 @@
 
 
     <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="category_type">type</string>
     <string name="type_phrase">phrase</string>
     <string name="type_all">other</string>
     <string name="type_basic">basic character</string>
     <string name="title_activity_base_with_nav">The Cantonese Dictionary</string>
 
-    <string name="navigation_drawer_open">Open navigation drawer</string>
-    <string name="navigation_drawer_close">Close navigation drawer</string>
-
-    <string name="action_settings">Settings</string>
     <string name="basic_wprds">basic characters</string>
     <string name="nav_phrasess">phrases</string>
-    <string name="numbers">Numbers</string>
     <string name="other_charicters">other characters</string>
-    <string name="nav_phrases">Phrases</string>
-    <string name="action_logout">Izzy is my sexy woman</string>
-    <string name="action_mark_all_read">action mark all read string</string>
-    <string name="action_clear_all">clear all string</string>
+    <string name="action_logout">logout</string>
     <string name="openDrawer">open draw string</string>
     <string name="closeDrawer">close draw string</string>
-    <string name="nav_about_us">To the old version</string>
-    <string name="privacy_policy">string link</string>
     <string name="numbers_nav_string">Numbers</string>
     <string name="nav_all_words">all characters</string>
     <string name="search_button">Search</string>
     <string name="search_hint">English or Cantonese here</string>
-    <string name="empty_view_title_text">empty view</string>
-    <string name="empty_view_subtitle_text">subtitle</string>
+    <string name="empty_view_title_text">load the dictionary!</string>
 </resources>
