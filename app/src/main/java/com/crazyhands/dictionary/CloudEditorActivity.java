@@ -5,7 +5,6 @@ import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.net.Uri;
-import android.os.Environment;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.NavUtils;
 import android.support.v4.content.ContextCompat;
@@ -21,33 +20,22 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ListView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.android.volley.AuthFailureError;
-import com.android.volley.NetworkError;
-import com.android.volley.NoConnectionError;
-import com.android.volley.ParseError;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
-import com.android.volley.ServerError;
-import com.android.volley.TimeoutError;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
-import com.crazyhands.dictionary.Adapters.CantoneseListAdapter;
-import com.crazyhands.dictionary.App.Config;
+import com.crazyhands.dictionary.Api.Model.Word;
+import com.crazyhands.dictionary.Api.Service.DictionaryClient;
 import com.crazyhands.dictionary.data.Contract.WordEntry;
-import com.crazyhands.dictionary.data.MediaPlayeHelperClass;
-import com.crazyhands.dictionary.data.QueryUtils;
-import com.crazyhands.dictionary.items.Cantonese_List_item;
 
 
 import net.gotev.uploadservice.MultipartUploadRequest;
-import net.gotev.uploadservice.UploadNotificationConfig;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -56,22 +44,23 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.UUID;
 
+import okhttp3.Interceptor;
+import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+
 import static android.Manifest.permission.RECORD_AUDIO;
-import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 import static com.android.volley.VolleyLog.TAG;
-import static com.crazyhands.dictionary.App.Config.URL_DELEAT_CANTONESE_WHERE_ID;
-import static com.crazyhands.dictionary.App.Config.URL_GET_CANTONESE_WHERE;
 import static com.crazyhands.dictionary.App.Config.URL_GET_CANTONESE_WHERE_ID;
 
-public class CloudEditorActivity extends AppCompatActivity implements Response.ErrorListener{
+public class CloudEditorActivity extends AppCompatActivity implements Response.ErrorListener {
 
 
     /**
@@ -113,10 +102,14 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
 
     public static final int MEDIA_TYPE_SOUND = 2;
 
-    /** EditText field to enter the pet's gender */
+    /**
+     * EditText field to enter the pet's gender
+     */
     private Spinner mTypeSpinner;
 
-    /** Boolean flag that keeps track of whether the word has been edited (true) or not (false) */
+    /**
+     * Boolean flag that keeps track of whether the word has been edited (true) or not (false)
+     */
     private boolean mWordHasChanged = false;
 
     private int mType = 0;
@@ -213,7 +206,7 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
                     buttonStop.setEnabled(true);
 
                     Toast.makeText(CloudEditorActivity.this, "Recording started",
-                            Toast.LENGTH_LONG).show();
+                            Toast.LENGTH_SHORT).show();
                 } else {
                     requestPermission();
                 }
@@ -230,8 +223,7 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
                 buttonStart.setEnabled(true);
                 buttonStopPlayingRecording.setEnabled(false);
 
-                Toast.makeText(CloudEditorActivity.this, "Recording Completed",
-                        Toast.LENGTH_LONG).show();
+
             }
         });
 
@@ -278,6 +270,7 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
 
         setupSpinner();
     }
+
     /**
      * Setup the dropdown spinner that allows the user to select the gender of the pet.
      */
@@ -320,7 +313,6 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
     }
 
 
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu options from the res/menu/menu_editor.xml file.
@@ -343,7 +335,7 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
                 return true;
             // Respond to a click on the "Delete" menu option
             case R.id.action_delete:
-                deleateWord();
+                deleteWord();
                 Intent iintent = new Intent(CloudEditorActivity.this, BaseActivityWithNav.class);
                 startActivity(iintent);
                 return true;
@@ -355,6 +347,8 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
         }
         return super.onOptionsItemSelected(item);
     }
+
+    //save new or updated word to a word object
 
     private void saveWord() {
         // Read from input fields
@@ -370,22 +364,94 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
                 TextUtils.isEmpty(cantoneseString) &&
                 TextUtils.isEmpty(soundstring)) {
             // Since no fields were modified, we can return early without creating a new word.
-            // No need to create ContentValues and no need to do any ContentProvider operations.
-            Toast.makeText(CloudEditorActivity.this, "noo it didn't send", Toast.LENGTH_LONG).show();
             return;
-        } else {
-            uploadMultipart(englishString, jyutpingString, cantoneseString, soundstring);
-            Toast.makeText(CloudEditorActivity.this, "yay it sent", Toast.LENGTH_LONG).show();
+        } else {//if word id=-1 then it is a new word
+            if (wordid == -1){
+                Word word = new Word(englishString, cantoneseString, jyutpingString, soundstring, mType);
+            sendNetworkRequest(word);
+            }else{//else it's a word update
+                Word word = new Word(wordid, englishString, cantoneseString, jyutpingString, soundstring, mType );
+                UpdateWordNetworkRequest(word);
+            }
         }
     }
 
+    private void UpdateWordNetworkRequest(Word word) {
+        //create retrofit instance
+        Retrofit retrofit = buildRetrofit();
+
+        //get client and call object for the request
+        DictionaryClient client = retrofit.create(DictionaryClient.class);
+        client.CreateWord(word);
+        Call<Word> call = client.UpdateWord(word);
+
+        call.enqueue(new Callback<Word>() {
+            @Override
+            public void onResponse(Call<Word> call, retrofit2.Response<Word> response) {
+                Toast.makeText(CloudEditorActivity.this, "word updated successfully", Toast.LENGTH_SHORT).show();
+                Log.d("CloudEditorActivity", "Events Response: " + response.toString());
+            }
+            @Override
+            public void onFailure(Call<Word> call, Throwable t) {
+                Toast.makeText(CloudEditorActivity.this, "something went wrong", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+    }
+
+    //retro fit add word to database
+
+    private void sendNetworkRequest(Word word) {
+        //create retrofit instance
+        Retrofit retrofit = buildRetrofit();
+
+        //get client and call object for the request
+        DictionaryClient client = retrofit.create(DictionaryClient.class);
+        client.CreateWord(word);
+        Call<Word> call = client.CreateWord(word);
+
+        call.enqueue(new Callback<Word>() {
+            @Override
+            public void onResponse(Call<Word> call, retrofit2.Response<Word> response) {
+                Toast.makeText(CloudEditorActivity.this, "word added successfully", Toast.LENGTH_SHORT).show();
+                Log.d("CloudEditorActivity", "Events Response: " + response.toString());
+            }
+
+            @Override
+            public void onFailure(Call<Word> call, Throwable t) {
+                //Toast.makeText(MainActivity.this, "something went wrong", Toast.LENGTH_SHORT).show();
+                Log.d("retrofit mainactivity", "something went wrong: " + t.getMessage());
+
+            }
+        });
+
+    }
+
+    private Retrofit buildRetrofit() {
+        OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
+
+        httpClient.addInterceptor(new Interceptor() {
+            @Override
+            public okhttp3.Response intercept(Chain chain) throws IOException {
+                okhttp3.Request request = chain.request().newBuilder().addHeader("Accept", "application/json").addHeader("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6ImE1NDE3NDE3MDdlNWFlZGE3MWUxMGU2NmYxNzk2MmY0MzIzYmZhNTEyMTI3Nzg1YmE0ZmM1Nzk2MWRmZGYwOWFmMmUwOWZmNGE1ODhkMzM4In0.eyJhdWQiOiIyIiwianRpIjoiYTU0MTc0MTcwN2U1YWVkYTcxZTEwZTY2ZjE3OTYyZjQzMjNiZmE1MTIxMjc3ODViYTRmYzU3OTYxZGZkZjA5YWYyZTA5ZmY0YTU4OGQzMzgiLCJpYXQiOjE1MjY4MzcxMDEsIm5iZiI6MTUyNjgzNzEwMSwiZXhwIjoxNTU4MzczMTAxLCJzdWIiOiI2Iiwic2NvcGVzIjpbIioiXX0.Q0MNJn9W6wB67Ty2CIevG7bXzZCzNO0XxGtl9JqaYd9luC39eCFD8pbzTkT_YgXoL5CjiV0LjV8NbMBOYMZ26LsWNzeku05nIv92zFkbHJBiv2OTWLVBIZ4e39jFp6gLat--SkdJaOBAPheiSFJEwSIaTA1VbsveM4LtsaUAs0UKsuOJEjnkx3yUiahg8W32JC19MT5P1osD7ckes8rnA_XDjgvKbBPb1FlhAR3yN3KNNQjiQV_pqjJrwyGW-RKvxG3_YvUJAyzPW9f7Y9sTDKxeQDIPZ8b8quWlWaSVO93wtd6evmhq_YMWsecojyqh1kxb1Uosq-oblyJL3lpgqE45RdbKlWZDW6ObvHcdC_tFMx2CTgnhf99rrKPcQIQ8QO9wG4j8O_uQh17OjPnNz7FVh-2HHPCTLp5m-tsHjKu6H2ewBSK6PNrHp7cxjF8VI28OkcJz-kzSc3zTA5L3SPElcSxC036xlVT6SsW-oEBZus2KLwBeZB1JzzpgyXPshGy3ZQZL0tXmr7t-boU5dvw4EIsP11V-WjyBoEbbMajzGSbJ8BaIu663XktFm_tGBk9objmV0AD0Yzigrleq3Cavph9_5FT4GvSXResMk3pI1m7Cbsq6feCC6EHXMwcLu9ZD0nXt0TJfk1vEPTfgbpoO8ED8uKWAsZUC9x5v6uY").build();
+                return chain.proceed(request);
+            }
+        });
+        Retrofit retrofit = new Retrofit.Builder().addConverterFactory(GsonConverterFactory.create()).baseUrl("http://www.brianstein.co.uk/api/").client(httpClient.build()).build();
+        return retrofit;
+
+    }
+
     /*
-    * This is the method responsible for image upload
-    * We need the full image path and the name for the image in this method
-    * */
+     * This is the method responsible for image upload
+     * We need the full image path and the name for the image in this method
+     * */
     public void uploadMultipart(final String englishString, final String jyutpingString, final String cantoneseString, final String soundstring) {
         //getting name for the image
         //getting the actual path of the image
+        String url = "http://www.brianstein.co.uk/api/dictionary";
+//        Config.URL_ADD_WORD
+
         String path;
         if (recorded == true) {
             path = getFilesDir() + "/" + soundstring;//this may be wrong todo check
@@ -396,11 +462,11 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
         }
         if (recorded == true) {
 
-            //Uploading code
+            //Uploading multipart for sound file
             try {
                 String uploadId = UUID.randomUUID().toString();
                 //Creating a multi part request
-                new MultipartUploadRequest(this, uploadId, Config.URL_ADD_WORD)
+                new MultipartUploadRequest(this, uploadId, url)
                         .addFileToUpload(path, "userfile") //Adding file
                         .addParameter("id", Integer.toString(wordid))
                         .addParameter("name", soundstring) //Adding text parameter to the request
@@ -409,60 +475,17 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
                         .addParameter("english", englishString)
                         .addParameter("cantonese", cantoneseString)
                         .addParameter("soundAddress", soundstring)
+                        .addParameter("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6IjE0YzUwZWViMWRjNmEwMjM4M2YzZWRiMDdmNDg4YTJhN2Y2MmFkOWE4MmZiYWNlZjJlYTQyYmUwN2IzZjE4MjQyOGI3Y2RhNTk1ODQzZGFlIn0.eyJhdWQiOiIyIiwianRpIjoiMTRjNTBlZWIxZGM2YTAyMzgzZjNlZGIwN2Y0ODhhMmE3ZjYyYWQ5YTgyZmJhY2VmMmVhNDJiZTA3YjNmMTgyNDI4YjdjZGE1OTU4NDNkYWUiLCJpYXQiOjE1MjY3MjI5NTAsIm5iZiI6MTUyNjcyMjk1MCwiZXhwIjoxNTU4MjU4OTUwLCJzdWIiOiI2Iiwic2NvcGVzIjpbIioiXX0.DIFHMT-7OEDS3xBeCayAGRScnfmvKSwqC0pqHAk9S4267IO9kBS-CmFWpFUthPoUDsvnDvpO1dwiqmSpllt2uBRan0PUh28Er3RWAJrno0Cvyy2IRJLg3VJj0ZDOqNr3hCIrBf49ezIone7QYw86P8XtuVquT4flhgE08qzp6FVpWlyX79SPcC59FoEyccnd6Vgo-JRdWCw3LqEGNP9plnHpILZVrNP90JDxuBiPV1O9bGI0vhyISSUqhbxeEHZ4lK1u7-IPEwFol-2TSYzzOsjwwGOgT1KavO22a0HlT6oTS_aUFZib0_SaIhkoIndmug4tWC6n2vd6DbPlILkkJTbcHA1STN_3kuFfDsCLCegs6TX_B8jxvDcP5YtcV7RfIsdY6i8YhG1LI4rXjaNjySPK59otLG41A2Dh7miHdUXftWaa3F1qTcziv3KQUHDnOtGlSpGUoF5EYbWcjNJQNlINtLJzBK6jw455YJA2dTm_XuVOFJ01cYMCyYlP-HTQEEjL0l8ksNTHU012AgFoNpYuMrWbvLM_XCDkx02zdxnXx76E8xsaGLDEB9e7N2a60pg-jd9JrsUSOEpIZ19Ha9ksUk6zVQxlVGIri4jBbK3SvVnsTBV9UFco2KXsFv27B0ANOx8p-DSDNv-dzR4S3MdF4K-LFpF8NTTEcphDYdQ")
                         .setMaxRetries(2)
                         .setUtf8Charset()
                         .startUpload(); //Starting the upload
 
             } catch (Exception exc) {
                 Toast.makeText(this, exc.getMessage(), Toast.LENGTH_SHORT).show();
-            }}
-        else {
-            final RequestQueue requestque = Volley.newRequestQueue(CloudEditorActivity.this);
-
-            StringRequest request = new StringRequest(Request.Method.POST, Config.URL_ADD_WORD,
-
-                    new Response.Listener<String>() {
-                        @Override
-                        public void onResponse(String response) {
-                            Log.d(TAG, "Events Response: " + response.toString());
-
-                            // Extract relevant fields from the JSON response
-
-                            // If the JSON string is empty or null, then return early.
-                            if (TextUtils.isEmpty(response)) {
-                                return;
-                            }
-                            // Try to parse the JSON response string. If there's a problem with the way the JSON
-                            // is formatted, a JSONException exception object will be thrown.
-                            // Catch the exception so the app doesn't crash, and print the error message to the logs.
-
-                            requestque.stop();
-
-
-                        }
-                    },this) {
-
-                @Override
-                protected Map<String, String> getParams() {
-                    // Posting params to register url
-                    Map<String, String> params = new HashMap<String, String>();
-                    params.put("id", Integer.toString(wordid));
-                    params.put("name", soundstring); //Adding text parameter to the request
-                    params.put("type", String.valueOf(mType));
-                    params.put("english", englishString);
-                    params.put("jyutping", jyutpingString);
-                    params.put("cantonese", cantoneseString);
-                    params.put("soundAddress", soundstring);
-
-                    return params;
-
-                }
-
-            };
-            requestque.add(request);
-
+            }
         }
     }
+
 
 //methods for the sound recording
 
@@ -474,7 +497,7 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
         mediaRecorder.setOutputFile(AudioSavePathInDevice.getPath());
     }
 
-
+//request permissions to use the recorder
     private void requestPermission() {
         ActivityCompat.requestPermissions(CloudEditorActivity.this, new
                 String[]{RECORD_AUDIO}, RequestPermissionCode);
@@ -506,6 +529,8 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
         return result1 == PackageManager.PERMISSION_GRANTED;
     }
 
+    //getting the sound file
+    //returns media file
 
     private File getOutputMediaFile(int type) {
 
@@ -525,12 +550,13 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
         return mediaFile;
     }
 
+
+    //volly fill in fields todo change this to sqli call
     private void addValuesToFields(int wordid) {
         mEnglishEditText.setText(R.string.setEnglish);
         mJyutpingEditText.setText(R.string.setJuytping);
         mCantoneseEditText.setText(R.string.SetCantonese);
-        //mSoundtextview.setText("things sound location");
-//todo change the spinner
+
 
         final RequestQueue requestque = Volley.newRequestQueue(CloudEditorActivity.this);
 
@@ -601,75 +627,62 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
 
 
                     }
-                },this);
+                }, this);
         requestque.add(request);
 
 
     }
 
-    private void deleateWord() {
+    //delete word function
+    //returns void
 
-        final RequestQueue requestque = Volley.newRequestQueue(CloudEditorActivity.this);
+    private void deleteWord() {
+        //create retrofit instance
+        HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+        logging.setLevel(HttpLoggingInterceptor.Level.BODY);
 
-        StringRequest request = new StringRequest(Request.Method.POST, URL_DELEAT_CANTONESE_WHERE_ID + "/?id=" + wordid,
+        OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
 
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        Log.d(TAG, "Events Response: " + response.toString());
-
-                        // Extract relevant fields from the JSON response
-
-                        // If the JSON string is empty or null, then return early.
-                        if (TextUtils.isEmpty(response)) {
-                            return;
-                        }
-
-
-                        requestque.stop();
-
-
-                    }
-                },this) {
+        httpClient.addInterceptor(new Interceptor() {
             @Override
-            protected Map<String, String> getParams() {
-                // Posting params to register url
-                Map<String, String> params = new HashMap<String, String>();
-                //params.put("profile_picture", new FileBody(new File("/storage/emulated/0/Pictures/VSCOCam/2015-07-31 11.55.14 1.jpg")));
-                params.put("id", String.valueOf(wordid));
+            public okhttp3.Response intercept(Chain chain) throws IOException {
+                okhttp3.Request request = chain.request().newBuilder().addHeader("Accept", "application/json").addHeader("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6ImE1NDE3NDE3MDdlNWFlZGE3MWUxMGU2NmYxNzk2MmY0MzIzYmZhNTEyMTI3Nzg1YmE0ZmM1Nzk2MWRmZGYwOWFmMmUwOWZmNGE1ODhkMzM4In0.eyJhdWQiOiIyIiwianRpIjoiYTU0MTc0MTcwN2U1YWVkYTcxZTEwZTY2ZjE3OTYyZjQzMjNiZmE1MTIxMjc3ODViYTRmYzU3OTYxZGZkZjA5YWYyZTA5ZmY0YTU4OGQzMzgiLCJpYXQiOjE1MjY4MzcxMDEsIm5iZiI6MTUyNjgzNzEwMSwiZXhwIjoxNTU4MzczMTAxLCJzdWIiOiI2Iiwic2NvcGVzIjpbIioiXX0.Q0MNJn9W6wB67Ty2CIevG7bXzZCzNO0XxGtl9JqaYd9luC39eCFD8pbzTkT_YgXoL5CjiV0LjV8NbMBOYMZ26LsWNzeku05nIv92zFkbHJBiv2OTWLVBIZ4e39jFp6gLat--SkdJaOBAPheiSFJEwSIaTA1VbsveM4LtsaUAs0UKsuOJEjnkx3yUiahg8W32JC19MT5P1osD7ckes8rnA_XDjgvKbBPb1FlhAR3yN3KNNQjiQV_pqjJrwyGW-RKvxG3_YvUJAyzPW9f7Y9sTDKxeQDIPZ8b8quWlWaSVO93wtd6evmhq_YMWsecojyqh1kxb1Uosq-oblyJL3lpgqE45RdbKlWZDW6ObvHcdC_tFMx2CTgnhf99rrKPcQIQ8QO9wG4j8O_uQh17OjPnNz7FVh-2HHPCTLp5m-tsHjKu6H2ewBSK6PNrHp7cxjF8VI28OkcJz-kzSc3zTA5L3SPElcSxC036xlVT6SsW-oEBZus2KLwBeZB1JzzpgyXPshGy3ZQZL0tXmr7t-boU5dvw4EIsP11V-WjyBoEbbMajzGSbJ8BaIu663XktFm_tGBk9objmV0AD0Yzigrleq3Cavph9_5FT4GvSXResMk3pI1m7Cbsq6feCC6EHXMwcLu9ZD0nXt0TJfk1vEPTfgbpoO8ED8uKWAsZUC9x5v6uY").build();
+                return chain.proceed(request);
+            }
+        });
+        httpClient.addInterceptor(logging);
 
+        Retrofit retrofit = new Retrofit.Builder().addConverterFactory(GsonConverterFactory.create()).baseUrl("http://www.brianstein.co.uk/api/").client(httpClient.build()).build();
 
-                return params;
+        //get client and call object for the request
+        DictionaryClient client = retrofit.create(DictionaryClient.class);
+        client.DeleteWord(wordid);
+        Call<Word> call = client.DeleteWord(wordid);
+
+        call.enqueue(new Callback<Word>() {
+            @Override
+            public void onResponse(Call<Word> call, retrofit2.Response<Word> response) {
+                //if (response.getId();)
+                Toast.makeText(CloudEditorActivity.this, "word deleted", Toast.LENGTH_SHORT).show();
 
             }
 
-        };
-        requestque.add(request);
+
+            @Override
+            public void onFailure(Call<Word> call, Throwable t) {
+                Toast.makeText(CloudEditorActivity.this, "something went wrong", Toast.LENGTH_SHORT).show();
+                Log.d("deleteWord", "fail: " + t.getMessage());
+
+            }
+        });
+
 
     }
-    @Override
-    public void onErrorResponse(VolleyError volleyError) {
-        //textview.setText("someshit gone down!");
-        volleyError.printStackTrace();
-        Log.e(TAG, "Response error" + volleyError.getMessage());
-        Toast.makeText(CloudEditorActivity.this,
-                volleyError.getMessage(), Toast.LENGTH_LONG).show();
-        String message = null;
-        if (volleyError instanceof NetworkError) {
-            message = getString(R.string.ConnectionErrorMessage);
-        } else if (volleyError instanceof ServerError) {
-            message = "The server could not be found. Please try again after some time!!";
-        } else if (volleyError instanceof AuthFailureError) {
-            message = "Cannot connect to Internet...Please check your connection!";
-        } else if (volleyError instanceof ParseError) {
-            message = "Parsing error! Please try again after some time!!";
-        } else if (volleyError instanceof NoConnectionError) {
-            message = "Cannot connect to Internet...Please check your connection!";
-        } else if (volleyError instanceof TimeoutError) {
-            message = "Connection TimeOut! Please check your internet connection.";
-        }
 
-        Toast.makeText(CloudEditorActivity.this, message, Toast.LENGTH_SHORT).show();
+    //volley error response
+
+    @Override
+    public void onErrorResponse(VolleyError error) {
 
     }
 }
