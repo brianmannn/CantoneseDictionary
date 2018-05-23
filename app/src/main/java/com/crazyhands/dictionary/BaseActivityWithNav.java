@@ -5,6 +5,7 @@ import android.content.ContentValues;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.design.widget.FloatingActionButton;
@@ -39,8 +40,12 @@ import com.android.volley.Response;
 import com.android.volley.ServerError;
 import com.android.volley.TimeoutError;
 import com.android.volley.VolleyError;
+import com.android.volley.VolleyLog;
+import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.crazyhands.dictionary.Api.Model.Word;
+import com.crazyhands.dictionary.Api.Service.DictionaryClient;
 import com.crazyhands.dictionary.Fragments.*;
 import com.crazyhands.dictionary.Fragments.BasicWordsFragment;
 import com.crazyhands.dictionary.data.Contract.WordEntry;
@@ -51,9 +56,29 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLConnection;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import javax.net.ssl.HttpsURLConnection;
+
+import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 import static com.android.volley.VolleyLog.TAG;
 import static com.crazyhands.dictionary.R.id.refresh;
@@ -112,7 +137,7 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
 
         drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         navigationView = (NavigationView) findViewById(R.id.nav_view);
-        fab = (FloatingActionButton) findViewById(R.id.fab);
+        //fab = (FloatingActionButton) findViewById(R.id.fab);
 
         // Navigation view header
         navHeader = navigationView.getHeaderView(0);
@@ -125,14 +150,14 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
         searchButton = (Button) navHeader.findViewById(search_button);
         searchField = (EditText) navHeader.findViewById(search_edit_text);
 
-        //set intent to open the CloudEditorActivity on the fab
+/*        //set intent to open the CloudEditorActivity on the fab
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 startActivity(new Intent(BaseActivityWithNav.this, CloudEditorActivity.class));
                 drawer.closeDrawers();
             }
-        });
+        });*/
 
         // load nav menu header data
         loadNavHeader();
@@ -169,6 +194,12 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
         //get shared preferences including initial install flag
         prefs = getSharedPreferences("com.crazyhands.dictionary", MODE_PRIVATE);
 
+        if (prefs.getBoolean("firstrun", true)) {
+            // Do first run stuff here then set 'firstrun' as false
+            // using the following line to edit/commit prefs
+            sendNetworkGetWordRequest();
+            prefs.edit().putBoolean("firstrun", false).commit();
+        }
     }
 
 //when the app app is restarted
@@ -176,13 +207,7 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
     protected void onResume() {
         super.onResume();
 
-        if (prefs.getBoolean("firstrun", true)) {
-            // Do first run stuff here then set 'firstrun' as false
-            // using the following line to edit/commit prefs
-            //todo run add words
-            syncSQLiteMySQLDB();
-            prefs.edit().putBoolean("firstrun", false).commit();
-        }
+
     }
 
     /***
@@ -208,7 +233,7 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
             drawer.closeDrawers();
 
             // show or hide the fab button
-            toggleFab();
+          //  toggleFab();
             return;
         }
 
@@ -236,7 +261,7 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
         }
 
         // show or hide the fab button
-        toggleFab();
+        //toggleFab();
 
         //Closing drawer on item click
         drawer.closeDrawers();
@@ -407,10 +432,10 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
         int id = item.getItemId();
 
 
-//todo auto add words the first time
         //if refresh button is pressed
         if (id == R.id.refresh) {
-            syncSQLiteMySQLDB();
+            sendNetworkGetWordRequest();
+
             return true;
         }
 
@@ -427,180 +452,103 @@ public class BaseActivityWithNav extends AppCompatActivity implements Response.E
             fab.hide();
     }
 
-    //methods for syncing the databases!
-
-    // Method to Sync MySQL to SQLite DB
-    public void syncSQLiteMySQLDB() {
-
-
-        // Show ProgressBar
-        prgDialog.show();
-//request all the words from the server
-        final RequestQueue requestque = Volley.newRequestQueue(BaseActivityWithNav.this);
-//todo remove hard code
-        StringRequest request = new StringRequest(Request.Method.POST, "http://s681173862.websitehome.co.uk/ian/Dictionary/getCantonese.php",
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        Log.d("volley mainactivity", "Events Response: " + response.toString());
-
-                        // Extract relevant fields from the JSON response
-                        // Hide ProgressBar
-                        prgDialog.hide();
-                        // If the JSON string is empty or null, then return early.
-                        if (TextUtils.isEmpty(response)) {
-                            return;
-                        }else{
-                            Log.v("response", response);
-                            // Hide ProgressBar
-                            prgDialog.hide();
-                            // Update SQLite DB with response sent by getCantonese.php
-                            updateSQLite(response);
-                        }
-                        // Try to parse the JSON response string. If there's a problem with the way the JSON
-                        // is formatted, a JSONException exception object will be thrown.
-                        // Catch the exception so the app doesn't crash, and print the error message to the logs.
-
-                        requestque.stop();
-
-
-                    }
-                },this);
-
-        requestque.add(request);
 
 
 
-    }
+    private void sendNetworkGetWordRequest() {
+        HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+        logging.setLevel(HttpLoggingInterceptor.Level.BASIC);
+        OkHttpClient.Builder okhttpclientbuilder = new OkHttpClient.Builder();
+        okhttpclientbuilder.addInterceptor(logging);
 
 
+        OkHttpClient okHttpClient = okhttpclientbuilder.build();
+        Retrofit retrofit = new Retrofit.Builder()
+                .addConverterFactory(GsonConverterFactory.create())
+                .baseUrl("http://www.brianstein.co.uk/api/")
+                .client(okHttpClient)
+                .build();
+
+        DictionaryClient client = retrofit.create(DictionaryClient.class);
 
 
+        Call<List<Word>> call = client.GetWords();
 
-    public void updateSQLite(String response){
-        ArrayList<HashMap<String, String>> usersynclist;
-        usersynclist = new ArrayList<>();
-        // Create GSON object
-        Gson gson = new GsonBuilder().create();
-        try {
-            // Create a JSONObject from the JSON response string
-            JSONObject baseJsonResponse = new JSONObject(response);
-
-            // Extract the JSONArray associated with the key called "features",
-            // which represents a list of features (or events).
-            JSONArray arr = baseJsonResponse.getJSONArray("result");
-
-            // Extract JSON array from the response
-            //JSONArray arr = new JSONArray(eventsarray);
-
-            System.out.println(arr.length());
-            // If no of array elements is not zero
-            if(arr.length() != 0){
-                // Loop through each array element, get JSON object which has english, jyutping, cantonese and soundid
-                for (int i = 0; i < arr.length(); i++) {
-                    // Get JSON object
-                    JSONObject obj = (JSONObject) arr.get(i);
-                    System.out.println(obj.get("English"));
-                    System.out.println(obj.get("jyutping"));
-                    System.out.println(obj.get("cantonese"));
-                    System.out.println(obj.get("soundAddress"));
-                    System.out.println(obj.get("type"));
-
-                    // Create a ContentValues object where column names are the keys,
-                    // and word attributes from the json are the values.
-                    ContentValues values = new ContentValues();
-
-                    // Add english extracted from Object
-                    values.put(WordEntry._id, obj.get("id").toString());
-
-                    // Add english extracted from Object
-                    values.put(WordEntry.COLUMN_DICTIONARY_ENGLISH, obj.get("English").toString());
-
-                    // Add jyutping extracted from Object
-                    values.put(WordEntry.COLUMN_DICTIONARY_JYUTPING, obj.get("jyutping").toString());
-
-                    // Add cantonese extracted from Object
-                    values.put(WordEntry.COLUMN_DICTIONARY_CANTONESE, obj.get("cantonese").toString());
-
-                    // Add cantonese extracted from Object
-                    values.put(WordEntry.COLUMN_DICTIONARY_SOUND_ID, obj.get("soundAddress").toString());
-
-                    // Add type extracted from Object
-                    values.put(WordEntry.COLUMN_DICTIONARY_TYPE, obj.get("type").toString());
-
-                    //todo clear SQLite databese before updateing it
-
-                    // Insert word into SQLite DB
-                    Uri newUri = getContentResolver().insert(WordEntry.CONTENT_URI, values);
-                    Log.i("newuri", String.valueOf(newUri));
-
-
-                    //hashmap for sync status of all the words just added
-                    HashMap<String, String> map = new HashMap<>();
-                    // Add status for each User in Hashmap
-                    map.put("id", obj.get("id").toString());
-                    map.put("status", "1");
-                    usersynclist.add(map);
-                }//todo delete words in sqlite that are not in mysql
-                // Inform Remote MySQL DB about the completion of Sync activity by passing Sync status of Users
-                //updateMySQLSyncSts(gson.toJson(usersynclist)); //todo enable this?
-                // Reload the Main Activity
-                reloadActivity();
-            }
-        } catch (JSONException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-    }
-
-    // Method to inform remote MySQL DB about completion of Sync activity
-    public void updateMySQLSyncSts(final String json) {
-        System.out.println(json);
-        // Make Http call to updatesyncsts.php with JSON parameter which has Sync statuses of Users
-
-//volley version
-
-
-        final RequestQueue requestque = Volley.newRequestQueue(BaseActivityWithNav.this);
-
-        StringRequest request = new StringRequest(Request.Method.POST, "http://s681173862.websitehome.co.uk/ian/dictionary/updatesyncsts.php",
-    //todo change url
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        Log.d("volley mainactivity", "Events Response: " + response.toString());
-
-                        // Extract relevant fields from the JSON response
-                        Toast.makeText(getApplicationContext(),	"MySQL DB has been informed about Sync activity", Toast.LENGTH_LONG).show();
-
-                        // If the JSON string is empty or null, then return early.
-                        if (TextUtils.isEmpty(response)) {
-                            return;
-                        }else{Log.v("syncsts", response);
-                        }
-                        // Try to parse the JSON response string. If there's a problem with the way the JSON
-                        // is formatted, a JSONException exception object will be thrown.
-                        // Catch the exception so the app doesn't crash, and print the error message to the logs.
-
-                        requestque.stop();
-
-
-                    }
-                },this) {
-
+        call.enqueue(new Callback<List<Word>>() {
             @Override
-            protected Map<String, String> getParams() {
-                // Posting params to register url
-                Map<String, String> params = new HashMap<String, String>();
-                params.put("syncsts", json);
-
-                return params;
+            public void onResponse(Call<List<Word>> call, retrofit2.Response<List<Word>> response) {
+                List<Word> words =response.body();
+                updateSQLite(words);
+                Log.d("get words call","response");
 
             }
+            @Override
+            public void onFailure(Call<List<Word>> call, Throwable t) {
+                Log.d("retrofit getrequest", "something went wrong: "+t.getMessage());
+            }
+        });
+    }
 
-        };
-        requestque.add(request);
 
+
+
+
+    public void updateSQLite(List<Word> response){
+
+        System.out.println(response.size());
+        // If no of array elements is not zero
+        if(response.size() != 0){
+            // clear SQLite databese before updateing it
+            getContentResolver().delete(WordEntry.CONTENT_URI,null,null);
+
+            // Loop through each array element, get JSON object which has english, jyutping, cantonese and soundid
+            for (int i = 0; i < response.size(); i++) {
+                // Get JSON object
+                //System.out.println(list.get(i))
+                Word obj =  response.get(i);
+                System.out.println(obj.getId());
+                System.out.println(obj.getEnglish());
+                System.out.println(obj.getJyutping());
+                System.out.println(obj.getCantonese());
+                System.out.println(obj.getSoundAddress());
+                System.out.println(obj.getType());
+
+                // Create a ContentValues object where column names are the keys,
+                // and word attributes from the json are the values.
+                ContentValues values = new ContentValues();
+
+                // Add english extracted from Object
+               values.put(WordEntry._id, obj.getId());
+
+                // Add english extracted from Object
+                values.put(WordEntry.COLUMN_DICTIONARY_ENGLISH, obj.getEnglish());
+
+                // Add jyutping extracted from Object
+                values.put(WordEntry.COLUMN_DICTIONARY_JYUTPING, obj.getJyutping().toString());
+
+                // Add cantonese extracted from Object
+               values.put(WordEntry.COLUMN_DICTIONARY_CANTONESE, obj.getCantonese().toString());
+
+                // Add cantonese extracted from Object
+                values.put(WordEntry.COLUMN_DICTIONARY_SOUND_ID, obj.getSoundAddress().toString());
+
+                // Add type extracted from Object
+                values.put(WordEntry.COLUMN_DICTIONARY_TYPE, obj.getType().toString());
+
+
+
+                // Insert word into SQLite DB
+               Uri newUri = getContentResolver().insert(WordEntry.CONTENT_URI, values);
+               Log.i("newuri", String.valueOf(newUri));
+
+
+
+            }//todo delete words in sqlite that are not in mysql
+            // Inform Remote MySQL DB about the completion of Sync activity by passing Sync status of Users
+            //updateMySQLSyncSts(gson.toJson(usersynclist)); //todo enable this?
+            // Reload the Main Activity
+            reloadActivity();
+        }
     }
 
     @Override

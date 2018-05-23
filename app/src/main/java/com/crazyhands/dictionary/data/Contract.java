@@ -122,7 +122,7 @@ public  final class Contract {
          * Returns whether or not the given gender is {@link #TYPE_ALL}, {@link #TYPE_BASIC},
          * or {@link #TYPE_PHRASE}.
          */
-        public static boolean isValidGender(int type) {
+        public static boolean isValidType(int type) {
             if (type == TYPE_ALL || type == TYPE_BASIC || type == TYPE_PHRASE || type == TYPE_NUMBER) {
                 return true;
             }

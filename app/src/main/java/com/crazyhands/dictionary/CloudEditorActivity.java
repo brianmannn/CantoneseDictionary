@@ -5,6 +5,7 @@ import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.net.Uri;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.NavUtils;
 import android.support.v4.content.ContextCompat;
@@ -14,32 +15,26 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.android.volley.Request;
-import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
+import com.crazyhands.dictionary.Api.Model.POJ;
 import com.crazyhands.dictionary.Api.Model.Word;
 import com.crazyhands.dictionary.Api.Service.DictionaryClient;
+import com.crazyhands.dictionary.App.Config;
 import com.crazyhands.dictionary.data.Contract.WordEntry;
 
 
 import net.gotev.uploadservice.MultipartUploadRequest;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
@@ -49,7 +44,12 @@ import java.util.Locale;
 import java.util.UUID;
 
 import okhttp3.Interceptor;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
+import okhttp3.OkHttpClient.Builder;
+import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
 import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -57,12 +57,11 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 import static android.Manifest.permission.RECORD_AUDIO;
-import static com.android.volley.VolleyLog.TAG;
-import static com.crazyhands.dictionary.App.Config.URL_GET_CANTONESE_WHERE_ID;
 
-public class CloudEditorActivity extends AppCompatActivity implements Response.ErrorListener {
+public class CloudEditorActivity extends AppCompatActivity {
 
 
+    private static Object httpClient;
     /**
      * Content URI for the existing word (null if it's a new word)
      */
@@ -110,17 +109,9 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
     /**
      * Boolean flag that keeps track of whether the word has been edited (true) or not (false)
      */
-    private boolean mWordHasChanged = false;
 
     private int mType = 0;
 
-    private View.OnTouchListener mTouchListener = new View.OnTouchListener() {
-        @Override
-        public boolean onTouch(View view, MotionEvent motionEvent) {
-            mWordHasChanged = true;
-            return false;
-        }
-    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -145,7 +136,7 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
         // If the intent DOES NOT contain a word content URI, then we know that we are
         // creating a new word.
         if (wordid == -1) {
-            // This is a new pet, so change the app bar to say "Add a Word"
+            // This is a new word, so change the app bar to say "Add a Word"
             setTitle(getString(R.string.editor_activity_title_new_word));
 
             // Invalidate the options menu, so the "Delete" menu option can be hidden.
@@ -156,10 +147,6 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
             setTitle(getString(R.string.editor_activity_title_edit_word));
             recorded = false;
 
-            // Initialize a loader to read the pet data from the database
-            // and display the current values in the editor
-            //getLoaderManager().initLoader(EXISTING_WORD_LOADER, null, CloudEditorActivity.this);
-            //Todo do I need a loader?
             addValuesToFields(wordid);
         }
 
@@ -174,12 +161,8 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
         buttonPlayLastRecordAudio.setEnabled(false);
         buttonStopPlayingRecording.setEnabled(false);
 
-//spiner on click listener
-        mTypeSpinner.setOnTouchListener(mTouchListener);
 
         // onclick listeners for the sound recorder
-
-
         buttonStart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -188,16 +171,14 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
                     recorded = true;
 
                     AudioSavePathInDevice = getOutputMediaFile(MEDIA_TYPE_SOUND);
+                    assert AudioSavePathInDevice != null;
                     mSoundtextview.setText(AudioSavePathInDevice.getName());
                     MediaRecorderReady();
 
                     try {
                         mediaRecorder.prepare();
                         mediaRecorder.start();
-                    } catch (IllegalStateException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    } catch (IOException e) {
+                    } catch (IllegalStateException | IOException e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
                     }
@@ -269,6 +250,8 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
         });
 
         setupSpinner();
+        ((LinearLayout) findViewById(R.id.RecorderLinearLayout)).setVisibility(View.GONE);
+        ((TextView) findViewById(R.id.cloud_soundRecorderTextView)).setVisibility(View.GONE);
     }
 
     /**
@@ -357,50 +340,42 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
         String jyutpingString = mJyutpingEditText.getText().toString().trim();
         String cantoneseString = mCantoneseEditText.getText().toString().trim();
         String soundstring = mSoundtextview.getText().toString().trim();
-        // Check if this is supposed to be a new pet
-        // and check if all the fields in the editor are blank
-        if (mCurrentWordUri == null &&
-                TextUtils.isEmpty(englishString) && TextUtils.isEmpty(jyutpingString) &&
-                TextUtils.isEmpty(cantoneseString) &&
-                TextUtils.isEmpty(soundstring)) {
-            // Since no fields were modified, we can return early without creating a new word.
-            return;
-        } else {//if word id=-1 then it is a new word
-            if (wordid == -1){
-                Word word = new Word(englishString, cantoneseString, jyutpingString, soundstring, mType);
-            sendNetworkRequest(word);
-            }else{//else it's a word update
-                Word word = new Word(wordid, englishString, cantoneseString, jyutpingString, soundstring, mType );
-                UpdateWordNetworkRequest(word);
-            }
+
+        //if word id=-1 then it is a new word
+        if (wordid == -1) {
+            Word word = new Word(englishString, cantoneseString, jyutpingString, soundstring, mType);
+            //sendNetworkRequest(word);
+            uploadFile(soundstring);
+
+        } else {//else it's a word update
+            Word word = new Word(wordid, englishString, cantoneseString, jyutpingString, soundstring, mType);
+            UpdateWordNetworkRequest(word);
         }
     }
 
-    private void UpdateWordNetworkRequest(Word word) {
-        //create retrofit instance
-        Retrofit retrofit = buildRetrofit();
 
-        //get client and call object for the request
-        DictionaryClient client = retrofit.create(DictionaryClient.class);
-        client.CreateWord(word);
-        Call<Word> call = client.UpdateWord(word);
+    private Retrofit buildRetrofit() {
 
-        call.enqueue(new Callback<Word>() {
+        HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+        logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+
+
+        Builder httpClient = new Builder();
+        httpClient.addInterceptor(logging);
+
+        httpClient.addInterceptor(new Interceptor() {
             @Override
-            public void onResponse(Call<Word> call, retrofit2.Response<Word> response) {
-                Toast.makeText(CloudEditorActivity.this, "word updated successfully", Toast.LENGTH_SHORT).show();
-                Log.d("CloudEditorActivity", "Events Response: " + response.toString());
-            }
-            @Override
-            public void onFailure(Call<Word> call, Throwable t) {
-                Toast.makeText(CloudEditorActivity.this, "something went wrong", Toast.LENGTH_SHORT).show();
+            public okhttp3.Response intercept(@NonNull Chain chain) throws IOException {
+                okhttp3.Request request = chain.request().newBuilder().addHeader("Accept", "application/json").addHeader("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6ImE1NDE3NDE3MDdlNWFlZGE3MWUxMGU2NmYxNzk2MmY0MzIzYmZhNTEyMTI3Nzg1YmE0ZmM1Nzk2MWRmZGYwOWFmMmUwOWZmNGE1ODhkMzM4In0.eyJhdWQiOiIyIiwianRpIjoiYTU0MTc0MTcwN2U1YWVkYTcxZTEwZTY2ZjE3OTYyZjQzMjNiZmE1MTIxMjc3ODViYTRmYzU3OTYxZGZkZjA5YWYyZTA5ZmY0YTU4OGQzMzgiLCJpYXQiOjE1MjY4MzcxMDEsIm5iZiI6MTUyNjgzNzEwMSwiZXhwIjoxNTU4MzczMTAxLCJzdWIiOiI2Iiwic2NvcGVzIjpbIioiXX0.Q0MNJn9W6wB67Ty2CIevG7bXzZCzNO0XxGtl9JqaYd9luC39eCFD8pbzTkT_YgXoL5CjiV0LjV8NbMBOYMZ26LsWNzeku05nIv92zFkbHJBiv2OTWLVBIZ4e39jFp6gLat--SkdJaOBAPheiSFJEwSIaTA1VbsveM4LtsaUAs0UKsuOJEjnkx3yUiahg8W32JC19MT5P1osD7ckes8rnA_XDjgvKbBPb1FlhAR3yN3KNNQjiQV_pqjJrwyGW-RKvxG3_YvUJAyzPW9f7Y9sTDKxeQDIPZ8b8quWlWaSVO93wtd6evmhq_YMWsecojyqh1kxb1Uosq-oblyJL3lpgqE45RdbKlWZDW6ObvHcdC_tFMx2CTgnhf99rrKPcQIQ8QO9wG4j8O_uQh17OjPnNz7FVh-2HHPCTLp5m-tsHjKu6H2ewBSK6PNrHp7cxjF8VI28OkcJz-kzSc3zTA5L3SPElcSxC036xlVT6SsW-oEBZus2KLwBeZB1JzzpgyXPshGy3ZQZL0tXmr7t-boU5dvw4EIsP11V-WjyBoEbbMajzGSbJ8BaIu663XktFm_tGBk9objmV0AD0Yzigrleq3Cavph9_5FT4GvSXResMk3pI1m7Cbsq6feCC6EHXMwcLu9ZD0nXt0TJfk1vEPTfgbpoO8ED8uKWAsZUC9x5v6uY").build();
+                return chain.proceed(request);
             }
         });
+        return new Retrofit.Builder().addConverterFactory(GsonConverterFactory.create()).baseUrl("http://www.brianstein.co.uk/api/").client(httpClient.build()).build();
 
     }
 
-    //retro fit add word to database
 
+    //retro fit add a new word to database
     private void sendNetworkRequest(Word word) {
         //create retrofit instance
         Retrofit retrofit = buildRetrofit();
@@ -412,78 +387,149 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
 
         call.enqueue(new Callback<Word>() {
             @Override
-            public void onResponse(Call<Word> call, retrofit2.Response<Word> response) {
+            public void onResponse(@NonNull Call<Word> call, @NonNull retrofit2.Response<Word> response) {
                 Toast.makeText(CloudEditorActivity.this, "word added successfully", Toast.LENGTH_SHORT).show();
                 Log.d("CloudEditorActivity", "Events Response: " + response.toString());
             }
 
             @Override
-            public void onFailure(Call<Word> call, Throwable t) {
+            public void onFailure(@NonNull Call<Word> call, @NonNull Throwable t) {
                 //Toast.makeText(MainActivity.this, "something went wrong", Toast.LENGTH_SHORT).show();
                 Log.d("retrofit mainactivity", "something went wrong: " + t.getMessage());
-
             }
         });
 
     }
 
-    private Retrofit buildRetrofit() {
-        OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
+
+    //volly fill in fields todo change this to sqli call
+    private void addValuesToFields(int mwordId) {
+        mEnglishEditText.setText(R.string.setEnglish);
+        mJyutpingEditText.setText(R.string.setJuytping);
+        mCantoneseEditText.setText(R.string.SetCantonese);
+        //create retrofit instance
+        Retrofit retrofit = buildRetrofit();
+        Log.d("content", "adding values");
+
+
+        //get client and call object for the request
+        DictionaryClient client = retrofit.create(DictionaryClient.class);
+        Call<POJ> call = client.GetWord(mwordId);
+
+        call.enqueue(new Callback<POJ>() {
+            @Override
+            public void onResponse(@NonNull Call<POJ> call, @NonNull retrofit2.Response<POJ> response) {
+
+
+                if (response.body() != null) {
+
+                    // Extract the value for the key called "id"
+                    int id = response.body().getWords().getId();
+
+//{"data":{"id":1,"english":"Heart","jyutping":"sam","cantonese":"\u5fc3","soundAddress":"sam.3gp","type":1,"syncsts":0,"remember_token":null,"created_at":null,"updated_at":null},"version ":"1.0.0","author_url":"brianstein.co.uk"}
+                    // Extract the value for the key called "English"
+                    String english = response.body().getWords().getEnglish();
+                    Log.d("EditorResponseBody", "response.body().getEnglish() is : " + response.body());
+
+                    // Extract the value for the key called "jyutping",
+                    String jyutping = response.body().getWords().getJyutping();
+
+                    // Extract the value for the key called "cantonese"
+                    String cantonese = response.body().getWords().getCantonese();
+
+                    // Extract the value for the key called "sound address"
+                    String soundAddress = response.body().getWords().getSoundAddress();
+
+                    mEnglishEditText.setText(english);
+                    mJyutpingEditText.setText(jyutping);
+                    mCantoneseEditText.setText(cantonese);
+                    mSoundtextview.setText(soundAddress);
+
+                } else {
+                    Toast.makeText(CloudEditorActivity.this, "That word doesn't seem to exist", Toast.LENGTH_SHORT).show();
+                    Log.d("editorUpdate", "body was empty");
+
+                }
+            }
+
+
+            @Override
+            public void onFailure(@NonNull Call<POJ> call, @NonNull Throwable t) {
+                Toast.makeText(CloudEditorActivity.this, "something went wrong", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+    }
+
+
+    private void UpdateWordNetworkRequest(Word word) {
+        //create retrofit instance
+        Retrofit retrofit = buildRetrofit();
+
+        //get client and call object for the request
+        DictionaryClient client = retrofit.create(DictionaryClient.class);
+        client.CreateWord(word);
+        Call<POJ> call = client.UpdateWord(word);
+
+        call.enqueue(new Callback<POJ>() {
+            @Override
+            public void onResponse(@NonNull Call<POJ> call, @NonNull retrofit2.Response<POJ> response) {
+                //Toast.makeText(CloudEditorActivity.this, "word updated successfully", Toast.LENGTH_SHORT).show();
+                Log.d("EditorActivityUpdate", "Events Response: " + response.toString());
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<POJ> call, @NonNull Throwable t) {
+                Toast.makeText(CloudEditorActivity.this, "something went wrong", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+    }
+
+    //delete word function
+    //returns void
+
+    private void deleteWord() {
+        //create retrofit instance
+        HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+        logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+
+        Builder httpClient = new Builder();
 
         httpClient.addInterceptor(new Interceptor() {
             @Override
-            public okhttp3.Response intercept(Chain chain) throws IOException {
+            public okhttp3.Response intercept(@NonNull Chain chain) throws IOException {
                 okhttp3.Request request = chain.request().newBuilder().addHeader("Accept", "application/json").addHeader("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6ImE1NDE3NDE3MDdlNWFlZGE3MWUxMGU2NmYxNzk2MmY0MzIzYmZhNTEyMTI3Nzg1YmE0ZmM1Nzk2MWRmZGYwOWFmMmUwOWZmNGE1ODhkMzM4In0.eyJhdWQiOiIyIiwianRpIjoiYTU0MTc0MTcwN2U1YWVkYTcxZTEwZTY2ZjE3OTYyZjQzMjNiZmE1MTIxMjc3ODViYTRmYzU3OTYxZGZkZjA5YWYyZTA5ZmY0YTU4OGQzMzgiLCJpYXQiOjE1MjY4MzcxMDEsIm5iZiI6MTUyNjgzNzEwMSwiZXhwIjoxNTU4MzczMTAxLCJzdWIiOiI2Iiwic2NvcGVzIjpbIioiXX0.Q0MNJn9W6wB67Ty2CIevG7bXzZCzNO0XxGtl9JqaYd9luC39eCFD8pbzTkT_YgXoL5CjiV0LjV8NbMBOYMZ26LsWNzeku05nIv92zFkbHJBiv2OTWLVBIZ4e39jFp6gLat--SkdJaOBAPheiSFJEwSIaTA1VbsveM4LtsaUAs0UKsuOJEjnkx3yUiahg8W32JC19MT5P1osD7ckes8rnA_XDjgvKbBPb1FlhAR3yN3KNNQjiQV_pqjJrwyGW-RKvxG3_YvUJAyzPW9f7Y9sTDKxeQDIPZ8b8quWlWaSVO93wtd6evmhq_YMWsecojyqh1kxb1Uosq-oblyJL3lpgqE45RdbKlWZDW6ObvHcdC_tFMx2CTgnhf99rrKPcQIQ8QO9wG4j8O_uQh17OjPnNz7FVh-2HHPCTLp5m-tsHjKu6H2ewBSK6PNrHp7cxjF8VI28OkcJz-kzSc3zTA5L3SPElcSxC036xlVT6SsW-oEBZus2KLwBeZB1JzzpgyXPshGy3ZQZL0tXmr7t-boU5dvw4EIsP11V-WjyBoEbbMajzGSbJ8BaIu663XktFm_tGBk9objmV0AD0Yzigrleq3Cavph9_5FT4GvSXResMk3pI1m7Cbsq6feCC6EHXMwcLu9ZD0nXt0TJfk1vEPTfgbpoO8ED8uKWAsZUC9x5v6uY").build();
                 return chain.proceed(request);
             }
         });
+        httpClient.addInterceptor(logging);
+
         Retrofit retrofit = new Retrofit.Builder().addConverterFactory(GsonConverterFactory.create()).baseUrl("http://www.brianstein.co.uk/api/").client(httpClient.build()).build();
-        return retrofit;
 
-    }
+        //get client and call object for the request
+        DictionaryClient client = retrofit.create(DictionaryClient.class);
+        client.DeleteWord(wordid);
+        Call<Word> call = client.DeleteWord(wordid);
 
-    /*
-     * This is the method responsible for image upload
-     * We need the full image path and the name for the image in this method
-     * */
-    public void uploadMultipart(final String englishString, final String jyutpingString, final String cantoneseString, final String soundstring) {
-        //getting name for the image
-        //getting the actual path of the image
-        String url = "http://www.brianstein.co.uk/api/dictionary";
-//        Config.URL_ADD_WORD
+        call.enqueue(new Callback<Word>() {
+            @Override
+            public void onResponse(@NonNull Call<Word> call, @NonNull retrofit2.Response<Word> response) {
+                //if (response.getId();)
+                Toast.makeText(CloudEditorActivity.this, "word deleted", Toast.LENGTH_SHORT).show();
 
-        String path;
-        if (recorded == true) {
-            path = getFilesDir() + "/" + soundstring;//this may be wrong todo check
-            Log.v("file plus sound str is:", getFilesDir() + "/" + soundstring);
-
-        } else {
-            path = null;
-        }
-        if (recorded == true) {
-
-            //Uploading multipart for sound file
-            try {
-                String uploadId = UUID.randomUUID().toString();
-                //Creating a multi part request
-                new MultipartUploadRequest(this, uploadId, url)
-                        .addFileToUpload(path, "userfile") //Adding file
-                        .addParameter("id", Integer.toString(wordid))
-                        .addParameter("name", soundstring) //Adding text parameter to the request
-                        .addParameter("type", String.valueOf(mType))
-                        .addParameter("jyutping", jyutpingString)
-                        .addParameter("english", englishString)
-                        .addParameter("cantonese", cantoneseString)
-                        .addParameter("soundAddress", soundstring)
-                        .addParameter("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6IjE0YzUwZWViMWRjNmEwMjM4M2YzZWRiMDdmNDg4YTJhN2Y2MmFkOWE4MmZiYWNlZjJlYTQyYmUwN2IzZjE4MjQyOGI3Y2RhNTk1ODQzZGFlIn0.eyJhdWQiOiIyIiwianRpIjoiMTRjNTBlZWIxZGM2YTAyMzgzZjNlZGIwN2Y0ODhhMmE3ZjYyYWQ5YTgyZmJhY2VmMmVhNDJiZTA3YjNmMTgyNDI4YjdjZGE1OTU4NDNkYWUiLCJpYXQiOjE1MjY3MjI5NTAsIm5iZiI6MTUyNjcyMjk1MCwiZXhwIjoxNTU4MjU4OTUwLCJzdWIiOiI2Iiwic2NvcGVzIjpbIioiXX0.DIFHMT-7OEDS3xBeCayAGRScnfmvKSwqC0pqHAk9S4267IO9kBS-CmFWpFUthPoUDsvnDvpO1dwiqmSpllt2uBRan0PUh28Er3RWAJrno0Cvyy2IRJLg3VJj0ZDOqNr3hCIrBf49ezIone7QYw86P8XtuVquT4flhgE08qzp6FVpWlyX79SPcC59FoEyccnd6Vgo-JRdWCw3LqEGNP9plnHpILZVrNP90JDxuBiPV1O9bGI0vhyISSUqhbxeEHZ4lK1u7-IPEwFol-2TSYzzOsjwwGOgT1KavO22a0HlT6oTS_aUFZib0_SaIhkoIndmug4tWC6n2vd6DbPlILkkJTbcHA1STN_3kuFfDsCLCegs6TX_B8jxvDcP5YtcV7RfIsdY6i8YhG1LI4rXjaNjySPK59otLG41A2Dh7miHdUXftWaa3F1qTcziv3KQUHDnOtGlSpGUoF5EYbWcjNJQNlINtLJzBK6jw455YJA2dTm_XuVOFJ01cYMCyYlP-HTQEEjL0l8ksNTHU012AgFoNpYuMrWbvLM_XCDkx02zdxnXx76E8xsaGLDEB9e7N2a60pg-jd9JrsUSOEpIZ19Ha9ksUk6zVQxlVGIri4jBbK3SvVnsTBV9UFco2KXsFv27B0ANOx8p-DSDNv-dzR4S3MdF4K-LFpF8NTTEcphDYdQ")
-                        .setMaxRetries(2)
-                        .setUtf8Charset()
-                        .startUpload(); //Starting the upload
-
-            } catch (Exception exc) {
-                Toast.makeText(this, exc.getMessage(), Toast.LENGTH_SHORT).show();
             }
-        }
+
+
+            @Override
+            public void onFailure(@NonNull Call<Word> call, @NonNull Throwable t) {
+                Toast.makeText(CloudEditorActivity.this, "something went wrong", Toast.LENGTH_SHORT).show();
+                Log.d("deleteWord", "fail: " + t.getMessage());
+
+            }
+        });
+
+
     }
 
 
@@ -497,7 +543,7 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
         mediaRecorder.setOutputFile(AudioSavePathInDevice.getPath());
     }
 
-//request permissions to use the recorder
+    //request permissions to use the recorder
     private void requestPermission() {
         ActivityCompat.requestPermissions(CloudEditorActivity.this, new
                 String[]{RECORD_AUDIO}, RequestPermissionCode);
@@ -505,7 +551,7 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
-                                           String permissions[], int[] grantResults) {
+                                           @NonNull String permissions[], @NonNull int[] grantResults) {
         switch (requestCode) {
             case RequestPermissionCode:
                 if (grantResults.length > 0) {
@@ -551,138 +597,113 @@ public class CloudEditorActivity extends AppCompatActivity implements Response.E
     }
 
 
-    //volly fill in fields todo change this to sqli call
-    private void addValuesToFields(int wordid) {
-        mEnglishEditText.setText(R.string.setEnglish);
-        mJyutpingEditText.setText(R.string.setJuytping);
-        mCantoneseEditText.setText(R.string.SetCantonese);
+    /*
+     * This is the method responsible for image upload
+     * We need the full image path and the name for the image in this method
+     * */
+    public void uploadMultipart(String soundstring) {
+        //getting name for the image
+        //getting the actual path of the image
+        String path;
+        if (recorded == true) {
+            path = getFilesDir() + "/" + soundstring;
+            Log.v("file plus sound str is:", getFilesDir() + "/" + soundstring);
 
+        } else {
+            path = null;
+        }
+        if (recorded == true) {
 
-        final RequestQueue requestque = Volley.newRequestQueue(CloudEditorActivity.this);
+            //Uploading code
+            try {
+                String uploadId = UUID.randomUUID().toString();
+                //Creating a multi part request
+                MultipartUploadRequest request = new MultipartUploadRequest(this, uploadId, Config.URL_ADD_WORD)
+                        .addFileToUpload(path, "userfile") //Adding file
+                        .addParameter("id", Integer.toString(wordid))
+                        .addParameter("name", soundstring) //Adding text parameter to the request
+                        .addParameter("type", String.valueOf(mType))
+                        //    .addParameter("jyutping", jyutpingString)
+                        //   .addParameter("english", englishString)
+                        //   .addParameter("cantonese", cantoneseString)
+                        .addParameter("soundAddress", soundstring)
+                        .setMaxRetries(2)
+                        .setUtf8Charset();
+                request.startUpload(); //Starting the upload
+                Log.d("multipartUpload", "uploading");
 
-        StringRequest request = new StringRequest(Request.Method.GET, URL_GET_CANTONESE_WHERE_ID + "/?Wordid=" + wordid,
-
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        Log.d(TAG, "Events Response: " + response.toString());
-
-                        // Extract relevant fields from the JSON response
-
-                        // If the JSON string is empty or null, then return early.
-                        if (TextUtils.isEmpty(response)) {
-                            return;
-                        }
-
-
-                        // Try to parse the JSON response string. If there's a problem with the way the JSON
-                        // is formatted, a JSONException exception object will be thrown.
-                        // Catch the exception so the app doesn't crash, and print the error message to the logs.
-                        try {
-
-                            // Create a JSONObject from the JSON response string
-                            JSONObject baseJsonResponse = new JSONObject(response);
-
-                            // Extract the JSONArray associated with the key called "result",
-                            // which represents a list of features (or events).
-                            JSONArray eventsarray = baseJsonResponse.getJSONArray("result");
-
-                            // For each earthquake in the eventsarray, create an {@link Event} object
-                            for (int i = 0; i < eventsarray.length(); i++) {
-
-                                // Get a single event at position i within the list of events
-                                JSONObject currentWord = eventsarray.getJSONObject(i);
-
-
-                                // Extract the value for the key called "id"
-                                int id = currentWord.getInt("id");
-
-                                // Extract the value for the key called "English"
-                                String english = currentWord.getString("English");
-
-                                // Extract the value for the key called "jyutping",
-                                String jyutping = currentWord.getString("jyutping");
-
-                                // Extract the value for the key called "cantonese"
-                                String cantonese = currentWord.getString("cantonese");
-
-                                // Extract the value for the key called "sound address"
-                                String soundAddress = currentWord.getString("soundAddress");
-
-                                mEnglishEditText.setText(english);
-                                mJyutpingEditText.setText(jyutping);
-                                mCantoneseEditText.setText(cantonese);
-                                mSoundtextview.setText(soundAddress);
-
-                            }
-
-                        } catch (JSONException e) {
-                            // If an error is thrown when executing any of the above statements in the "try" block,
-                            // catch the exception here, so the app doesn't crash. Print a log message
-                            // with the message from the exception.
-                            Log.e("QueryUtils", "Problem parsing the JSON results", e);
-                        }
-
-                        requestque.stop();
-
-
-                    }
-                }, this);
-        requestque.add(request);
-
-
+            } catch (Exception exc) {
+                Toast.makeText(this, exc.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            //todo add call for editing without uploading file
+        }
     }
 
-    //delete word function
-    //returns void
 
-    private void deleteWord() {
-        //create retrofit instance
-        HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
-        logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+    private void uploadFile(String soundstring) {
 
-        OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
+        //getting name for the image
+        //getting the actual path of the image
+        String path;
 
-        httpClient.addInterceptor(new Interceptor() {
-            @Override
-            public okhttp3.Response intercept(Chain chain) throws IOException {
-                okhttp3.Request request = chain.request().newBuilder().addHeader("Accept", "application/json").addHeader("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6ImE1NDE3NDE3MDdlNWFlZGE3MWUxMGU2NmYxNzk2MmY0MzIzYmZhNTEyMTI3Nzg1YmE0ZmM1Nzk2MWRmZGYwOWFmMmUwOWZmNGE1ODhkMzM4In0.eyJhdWQiOiIyIiwianRpIjoiYTU0MTc0MTcwN2U1YWVkYTcxZTEwZTY2ZjE3OTYyZjQzMjNiZmE1MTIxMjc3ODViYTRmYzU3OTYxZGZkZjA5YWYyZTA5ZmY0YTU4OGQzMzgiLCJpYXQiOjE1MjY4MzcxMDEsIm5iZiI6MTUyNjgzNzEwMSwiZXhwIjoxNTU4MzczMTAxLCJzdWIiOiI2Iiwic2NvcGVzIjpbIioiXX0.Q0MNJn9W6wB67Ty2CIevG7bXzZCzNO0XxGtl9JqaYd9luC39eCFD8pbzTkT_YgXoL5CjiV0LjV8NbMBOYMZ26LsWNzeku05nIv92zFkbHJBiv2OTWLVBIZ4e39jFp6gLat--SkdJaOBAPheiSFJEwSIaTA1VbsveM4LtsaUAs0UKsuOJEjnkx3yUiahg8W32JC19MT5P1osD7ckes8rnA_XDjgvKbBPb1FlhAR3yN3KNNQjiQV_pqjJrwyGW-RKvxG3_YvUJAyzPW9f7Y9sTDKxeQDIPZ8b8quWlWaSVO93wtd6evmhq_YMWsecojyqh1kxb1Uosq-oblyJL3lpgqE45RdbKlWZDW6ObvHcdC_tFMx2CTgnhf99rrKPcQIQ8QO9wG4j8O_uQh17OjPnNz7FVh-2HHPCTLp5m-tsHjKu6H2ewBSK6PNrHp7cxjF8VI28OkcJz-kzSc3zTA5L3SPElcSxC036xlVT6SsW-oEBZus2KLwBeZB1JzzpgyXPshGy3ZQZL0tXmr7t-boU5dvw4EIsP11V-WjyBoEbbMajzGSbJ8BaIu663XktFm_tGBk9objmV0AD0Yzigrleq3Cavph9_5FT4GvSXResMk3pI1m7Cbsq6feCC6EHXMwcLu9ZD0nXt0TJfk1vEPTfgbpoO8ED8uKWAsZUC9x5v6uY").build();
-                return chain.proceed(request);
-            }
-        });
-        httpClient.addInterceptor(logging);
+        if (recorded == true) {
+            path = getFilesDir() + "/" + soundstring;
+            Log.v("file plus sound str is:", getFilesDir() + "/" + soundstring);
 
-        Retrofit retrofit = new Retrofit.Builder().addConverterFactory(GsonConverterFactory.create()).baseUrl("http://www.brianstein.co.uk/api/").client(httpClient.build()).build();
+        } else {
+            path = null;
+        }
+        File file = null;
+        if (path != null) {
+            file = new File(path);
+        }
+        Uri fileUri = Uri.fromFile(file);
+        Log.d("file uri: ", fileUri.toString());
+        Log.d("file : ", file.toString());
+        if (recorded == true) {
 
-        //get client and call object for the request
+            Uploadfile(fileUri);
+        } else {
+            //todo add call for editing without uploading file
+        }
+    }
+
+    private void Uploadfile(Uri fileUri) {
+
+
+        File file = new File(fileUri.getPath());
+
+
+        // create upload service client
+        Retrofit retrofit = buildRetrofit();
         DictionaryClient client = retrofit.create(DictionaryClient.class);
-        client.DeleteWord(wordid);
-        Call<Word> call = client.DeleteWord(wordid);
 
-        call.enqueue(new Callback<Word>() {
+        // create RequestBody instance from file
+        RequestBody requestFile =
+                RequestBody.create(MediaType.parse(getContentResolver().getType(fileUri)),
+                        file
+                );
+
+        // MultipartBody.Part is used to send also the actual file name
+        MultipartBody.Part body =
+                MultipartBody.Part.createFormData("file", file.getName(), requestFile);
+
+
+
+        // finally, execute the request
+        Call<ResponseBody> call = client.upload(body);
+        call.enqueue(new Callback<ResponseBody>() {
             @Override
-            public void onResponse(Call<Word> call, retrofit2.Response<Word> response) {
-                //if (response.getId();)
-                Toast.makeText(CloudEditorActivity.this, "word deleted", Toast.LENGTH_SHORT).show();
+            public void onResponse(Call<ResponseBody> call, retrofit2.Response<ResponseBody> response) {
+                Log.d("Upload", "success");
 
             }
 
-
             @Override
-            public void onFailure(Call<Word> call, Throwable t) {
-                Toast.makeText(CloudEditorActivity.this, "something went wrong", Toast.LENGTH_SHORT).show();
-                Log.d("deleteWord", "fail: " + t.getMessage());
-
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                Log.d("Upload:", t.getMessage());
             }
         });
-
-
-    }
-
-    //volley error response
-
-    @Override
-    public void onErrorResponse(VolleyError error) {
-
     }
 }

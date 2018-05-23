@@ -29,15 +29,7 @@ import com.crazyhands.dictionary.Adapters.CantoneseListAdapter;
 import com.crazyhands.dictionary.Adapters.WordCursorAdapter;
 import com.crazyhands.dictionary.R;
 import com.crazyhands.dictionary.data.Contract;
-import com.crazyhands.dictionary.data.QueryUtils;
-import com.crazyhands.dictionary.items.Cantonese_List_item;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static com.android.volley.VolleyLog.TAG;
-import static com.crazyhands.dictionary.App.Config.URL_GET_CANTONESE;
-import static com.crazyhands.dictionary.App.Config.URL_GET_CANTONESE_WHERE;
 
 
 public class BasicWordsFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor> {
